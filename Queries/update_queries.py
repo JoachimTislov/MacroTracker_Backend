@@ -143,7 +143,7 @@ def UPDATE_reCalcMacrosForMeals(conn,personal_meal_ids, macrosDiff):
 def update_password_by_user_id(conn, password, user_id):
     cur = conn.cursor()
     try:
-        cur.execute("UPDATE users SET password =? WHERE user_no =?", (password, user_id))
+        cur.execute("UPDATE users SET password =? WHERE user_no =?", (password, user_id,))
         conn.commit()
     except sqlite3.Error as err:
         print("Error: {}".format(err))
@@ -151,8 +151,18 @@ def update_password_by_user_id(conn, password, user_id):
 def update_user_profile_picture(conn, file_path, user_id):
     cur = conn.cursor()
     try:
-        cur.execute("UPDATE users SET profile_picture_link = ? WHERE user_no = ?", (file_path, user_id))
+        cur.execute("UPDATE users SET profile_picture_link = ? WHERE user_no = ?", (file_path, user_id,))
         conn.commit()
+    except sqlite3.Error as err:
+        print("Error: {}".format(err))
+
+def update_user_token(conn, token, username):
+    cur = conn.cursor()
+    try:
+        cur.execute("UPDATE users SET token = ? WHERE username = ?", (token, username,))
+        conn.commit()
+
+        return True
     except sqlite3.Error as err:
         print("Error: {}".format(err))
 

@@ -59,7 +59,7 @@ def isIngredientValid(name, amount, protein, calories, carbohydrates, fat, sugar
     
     return True
 
-def validateIngredients_for_meal(ingredients_for_meal, response):
+def validateIngredients_for_meal(ingredients_for_meal):
     for ingredient in ingredients_for_meal:
         validate_ingredient = isIngredientValid(
                     ingredient['name'], 
@@ -71,8 +71,7 @@ def validateIngredients_for_meal(ingredients_for_meal, response):
                     ingredient['sugar'])
 
         if validate_ingredient is not True:
-            response.set_cookie('Message', validate_ingredient, samesite='None', secure='/')
-            return response, 500
+            return  validate_ingredient, 500
     
     return True
 

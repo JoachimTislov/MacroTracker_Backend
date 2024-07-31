@@ -20,6 +20,10 @@ def select_user_by_id(conn, user_id):
     sql = "SELECT user_no, username FROM users WHERE user_no=?"
     return run_select_query(conn, sql, user_id)
 
+def select_user_by_token(conn, token):
+    sql = "SELECT user_no, username FROM users WHERE token=?"
+    return run_select_query(conn, sql, token)
+
 def select_info_for_user_by_id(conn, user_id):
     sql = "SELECT name, username, password, email, age, profile_picture_link, weight, height, gender, activity_lvl FROM users WHERE user_no=?"
     return run_select_query(conn, sql, user_id)

@@ -30,8 +30,10 @@ def add_user(conn, username, password, gender, activity_lvl, email, name, weight
         cur = conn.cursor()
         cur.execute(sql, (username, password, gender, activity_lvl, email, name, weight, height, age))
         conn.commit()
+        return True
     except Error as err:
         print("Error, inserting add_user: {}".format(err))
+        return False
     
 def add_meal(conn, meal_name, user_no, protein, calories, carbohydrates, fat, sugar):
     sql = ''' INSERT INTO personal_meals(meal_name, user_no, protein, calories, carbohydrates, fat, sugar)

@@ -29,7 +29,8 @@ sql_create_users_table = """CREATE TABLE IF NOT EXISTS users (
                              weight INTEGER,
                              height INTEGER,
                              gender INTEGER CHECK (gender IN (1, 2)), -- 1 for Male, 2 for Female
-                             activity_lvl INTEGER CHECK (activity_lvl IN (1, 2, 3, 4, 5)) -- 1 for Sedentary, 2 for Lightly Active, 3 for Moderately Active, 4 for Very Active, 5 for Super Active
+                             activity_lvl INTEGER CHECK (activity_lvl IN (1, 2, 3, 4, 5)), -- 1 for Sedentary, 2 for Lightly Active, 3 for Moderately Active, 4 for Very Active, 5 for Super Active
+                             token TEXT UNIQUE
                          );"""
 
 sql_create_personal_meals_table = """CREATE TABLE IF NOT EXISTS personal_meals (

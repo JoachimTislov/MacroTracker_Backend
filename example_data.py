@@ -6,7 +6,7 @@
 
 ###### EXAMPLE USERS ######
 users_data = [
-    ("Per", "Peddi", "peder@123", "per.ole@gmail.com", "23", None, 70, 175, 1, 3),  # Male, Moderately Active
+    ("Per", "Peddi", "peder@123", "per.ole@gmail.com", "23", None, 70, 175, 1, 3, None),  # Male, Moderately Active
 ]
 
 ###### EXAMPLE MEALS #######

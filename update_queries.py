@@ -149,6 +149,7 @@ def update_password_by_user_id(conn, password, user_id):
         print("Error: {}".format(err))
     
 def update_user_profile_picture(conn, file_path, user_id):
+    print(user_id)
     cur = conn.cursor()
     try:
         cur.execute("UPDATE users SET profile_picture_link = ? WHERE user_no = ?", (file_path, user_id,))

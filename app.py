@@ -27,10 +27,11 @@ from inputValidation import isUsernameValid, isPasswordValid, validateUserInfo, 
 
 from encryption import get_hashed_password, check_password
 
-from dotenv import load_dotenv
-load_dotenv()
-
 from flask_cors import CORS
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
@@ -48,8 +49,10 @@ def token_required(f):
 	def decorator(*args, **kwargs):
 		token = None
 		if 'Authorization' in request.headers:
-			auth_header = request.headers['Authorization']
-			token = auth_header.split(' ')[1]  
+			token = request.headers.get('Authorization')  
+
+		if not token:
+			token = request.json.get('Authorization')
 
 		if not token:
 			return jsonify({'message': 'Token is missing!'}), 401
@@ -220,27 +223,33 @@ def update_user_information():
 @token_required
 def upload_profile_picture():
 		try:
+			if 'file' not in request.files:
+				return jsonify({'message': 'No file'}), 400
+
 			file = request.files['file']
 
 			if validatePicture(file.filename) is not True:
 				return jsonify({'message': 'File format is not accepted'}), 406
 
 			if file:
-				user_id = g.user.id
-				filename = secure_filename(f"{user_id}_{file.filename}")
+				filename = secure_filename(f"{g.user_id}_{file.filename}")
 
 				if not os.path.exists(app.config['picture_folder']):
 					os.mkdir(app.config['picture_folder'])
 				
 				file_path = os.path.join(app.config['picture_folder'], filename)
 				file.save(file_path)
-				update_user_profile_picture(get_db(), file_path, user_id)
+				update_user_profile_picture(get_db(), file_path, g.user_id)
 
 				return jsonify({'message': 'Profile picture uploaded successfully'}), 200
 			
+			else:
+
+				return jsonify({'message': 'Did not receive any file'}), 400
+			
 		except Exception as e:
 			print('Error uploading profile picture:', e)
-			return 'Error uploading profile picture', 500
+			return jsonify({'message': 'Error uploading profile picture'}), 400
 			
 @app.route('/profile_picture', methods=['DELETE'])
 @token_required

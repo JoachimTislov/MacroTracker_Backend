@@ -12,15 +12,15 @@ from uuid import uuid4
 
 from setup_db import create_connection
 
-from Queries.insert_queries import add_user, add_meal_to_calender, add_ingredient, add_ingredient_to_meal, add_meal
+from insert_queries import add_user, add_meal_to_calender, add_ingredient, add_ingredient_to_meal, add_meal
 
-from Queries.delete_queries import delete_meal, delete_meal_from_calender, delete_ingredient, delete_ingredient_from_specific_meal_with_ingredient_and_meal_id, delete_ingredient_from_meals_with_ingredient_id, delete_ingredients_from_meal_with_meal_id
+from delete_queries import delete_meal, delete_meal_from_calender, delete_ingredient, delete_ingredient_from_specific_meal_with_ingredient_and_meal_id, delete_ingredient_from_meals_with_ingredient_id, delete_ingredients_from_meal_with_meal_id
 
-from Queries.select_queries import (select_all_users_username, select_password_for_given_user, select_all_users_username_except_one, select_all_users_emails_except_one,
+from select_queries import (select_all_users_username, select_password_for_given_user, select_all_users_username_except_one, select_all_users_emails_except_one,
 select_meal_calender, select_personal_meals_with_ingredients, select_user_by_token, select_user_no_by_username, select_meals_the_ingredient_were_in, select_users_meals, select_users_ingredients, select_users_calender_entries,
 select_info_for_user_by_id, select_average_macros, select_personal_ingredients, select_ingredient_by_id, select_password_by_id, select_user_profile_picture_path, select_all_users_emails)
 
-from Queries.update_queries import (update_user_info, update_personal_meal, update_password_by_user_id,
+from update_queries import (update_user_info, update_personal_meal, update_password_by_user_id,
 							update_ingredient, update_personal_meal_name, update_total_macros_of_meal_ingredient_was_used_for, UPDATE_reCalcMacrosForMeals, update_user_profile_picture, update_user_token)
 
 from inputValidation import isUsernameValid, isPasswordValid, validateUserInfo, isIngredientValid, isMealNameValid, validateIngredients_for_meal, validateOwnership, isCalenderDateAndTimeValid, validatePicture
@@ -32,7 +32,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-app.secret_key = 'secret_key'
+app.secret_key = os.environ.get('API_KEY')
 app.config['picture_folder'] = "../src/assets/images"
 
 def get_db():

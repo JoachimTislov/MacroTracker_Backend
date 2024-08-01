@@ -61,8 +61,29 @@ def token_required(f):
 		return f(*args, **kwargs)
 
 	return decorator
+
+def api_key_required(f):
+	@wraps(f)
+	def decorator(*args, **kwargs):
+		api_key = None
+		if request.is_json:
+			api_key = request.json.get('API_KEY')
+
+		if not api_key:
+			api_key = request.headers.get('API_KEY')
+
+		if not api_key:
+			return jsonify({'message': 'API key is missing!'}), 400
+
+		if api_key == app.secret_key:
+			return f(*args, **kwargs)
+		else:
+			return jsonify({'message': 'Unauthorized access!'}), 401
+
+	return decorator
 	
 @app.route('/login', methods=["POST"])
+@api_key_required
 def loginPage():
 	username = request.json['username']
 	password = request.json['password']
@@ -83,6 +104,7 @@ def loginPage():
 			return 400
 
 @app.route('/register', methods=["GET","POST"])
+@api_key_required
 def register():
 	username = request.json['register_username']
 	usernames = select_all_users_username(get_db())

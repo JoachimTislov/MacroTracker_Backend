@@ -27,13 +27,16 @@ from inputValidation import isUsernameValid, isPasswordValid, validateUserInfo, 
 
 from encryption import get_hashed_password, check_password
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
 
 app.secret_key = os.environ.get('API_KEY')
-app.config['picture_folder'] = "../src/assets/images"
+app.config['picture_folder'] = "/user-images"
 
 def get_db():
     if 'db' not in g:
@@ -67,15 +70,17 @@ def api_key_required(f):
 	def decorator(*args, **kwargs):
 		api_key = None
 		if request.is_json:
-			api_key = request.json.get('API_KEY')
+			api_key = request.json.get('Authorization')
 
 		if not api_key:
-			api_key = request.headers.get('API_KEY')
+			api_key = request.headers.get('Authorization')
 
 		if not api_key:
 			return jsonify({'message': 'API key is missing!'}), 400
 
+		print(api_key, app.secret_key)
 		if api_key == app.secret_key:
+			
 			return f(*args, **kwargs)
 		else:
 			return jsonify({'message': 'Unauthorized access!'}), 401
@@ -90,9 +95,12 @@ def loginPage():
 
 	users_password = select_password_for_given_user(get_db(), username) #Indexing the tuple
 
-	if not isUsernameValid(username) or users_password is None:
-
+	if not isUsernameValid(username):
+		return jsonify({'message:' 'Invalid Username'}), 403
+	
+	if users_password is None:
 		return jsonify({'message': 'Wrong Password'}), 401
+	
 	elif isPasswordValid(password) and check_password(password, users_password[0]):
 
 		token = str(uuid4())
@@ -101,7 +109,7 @@ def loginPage():
 		if result:
 			return jsonify({'token': token}), 200
 		else:
-			return 400
+			return jsonify({'message': 'Error handling token'}), 422
 
 @app.route('/register', methods=["GET","POST"])
 @api_key_required
@@ -220,12 +228,16 @@ def upload_profile_picture():
 			if file:
 				user_id = g.user.id
 				filename = secure_filename(f"{user_id}_{file.filename}")
+
+				if not os.path.exists(app.config['picture_folder']):
+					os.mkdir(app.config['picture_folder'])
+				
 				file_path = os.path.join(app.config['picture_folder'], filename)
 				file.save(file_path)
-
 				update_user_profile_picture(get_db(), file_path, user_id)
 
 				return jsonify({'message': 'Profile picture uploaded successfully'}), 200
+			
 		except Exception as e:
 			print('Error uploading profile picture:', e)
 			return 'Error uploading profile picture', 500
@@ -637,6 +649,6 @@ def average_macros(user_id):
 		return 'Unauthorized', 401
 		
 if __name__ == '__main__':
-	app.run()
+	app.run(debug=True)
 
 

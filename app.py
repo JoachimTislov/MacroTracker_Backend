@@ -17,8 +17,8 @@ from insert_queries import add_user, add_meal_to_calender, add_ingredient, add_i
 from delete_queries import delete_meal, delete_meal_from_calender, delete_ingredient, delete_ingredient_from_specific_meal_with_ingredient_and_meal_id, delete_ingredient_from_meals_with_ingredient_id, delete_ingredients_from_meal_with_meal_id
 
 from select_queries import (select_all_users_username, select_all_users_username_except_one, select_all_users_emails_except_one,
-select_meal_calender, select_personal_meals_with_ingredients, select_user_by_token, select_user_id_and_password, select_user_no_by_username, select_meals_the_ingredient_were_in, select_users_meals, select_users_ingredients, select_users_calender_entries,
-select_info_for_user_by_id, select_average_macros, select_personal_ingredients, select_ingredient_by_id, select_password_by_id, select_user_profile_picture_path, select_all_users_emails)
+select_meal_calender, select_personal_meals_with_ingredients, select_user_by_token, select_user_id_and_password, select_user_no_by_username, select_meals_the_ingredient_were_in, select_user_profile_picture_name, select_users_image_name_by_id, select_users_meals, select_users_ingredients, select_users_calender_entries,
+select_info_for_user_by_id, select_average_macros, select_personal_ingredients, select_ingredient_by_id, select_password_by_id, select_all_users_emails)
 
 from update_queries import (update_user_info, update_personal_meal, update_password_by_user_id,
 							update_ingredient, update_personal_meal_name, update_total_macros_of_meal_ingredient_was_used_for, UPDATE_reCalcMacrosForMeals, update_user_profile_picture, update_user_token)
@@ -60,7 +60,7 @@ def token_required(f):
 		user = select_user_by_token(get_db(), token)
 
 		if user is None:
-			return jsonify({'message': 'Invalid token!'}), 403
+			return jsonify({'message': 'Invalid token!'}), 401
 
 		g.user = {'id': user[0], 'username': user[1]}
 
@@ -119,6 +119,16 @@ def loginPage():
 			return jsonify({'token': token, 'user_id': user_id}), 200
 		else:
 			return jsonify({'message': 'Error handling token'}), 422
+		
+@app.route('/logout', methods=["GET"])
+@token_required
+def logout():
+	result = update_user_token(get_db(), None, g.user.get('username'))
+
+	if result:
+		return jsonify({'message': 'Successfully logged you out'}), 200
+	else:
+		return jsonify({'message': 'Error handling token'}), 422
 
 @app.route('/register', methods=["GET","POST"])
 @api_key_required
@@ -246,7 +256,7 @@ def upload_profile_picture():
 			
 			file_path = os.path.join(app.config['picture_folder'], filename)
 			file.save(file_path)
-			update_user_profile_picture(get_db(), file_path, user_id)
+			update_user_profile_picture(get_db(), filename, user_id)
 
 			return jsonify({'message': 'Profile picture uploaded successfully'}), 200
 		
@@ -261,22 +271,22 @@ def upload_profile_picture():
 @app.route('/profile_picture', methods=['DELETE'])
 @token_required
 def delete_profile_picture():
-    
-        try:
-            user_id = g.user.get('id')
-            db = get_db()
-            file_path = select_user_profile_picture_path(db, user_id)
+	try:
+		user_id = g.user.get('id')
+		db = get_db()
+		file_name = select_user_profile_picture_name(db, user_id)
+		file_path = os.path.join(app.config['picture_folder'], file_name)
 
-            if file_path and os.path.exists(file_path):
-                os.remove(file_path)
+		if file_path and os.path.exists(file_path):
+			os.remove(file_path)
 
-            update_user_profile_picture(db, None, user_id)
+		update_user_profile_picture(db, None, user_id)
 
-            return jsonify({'message': 'Profile picture deleted successfully'}), 200
+		return jsonify({'message': 'Profile picture deleted successfully'}), 200
 
-        except Exception as e:
-            print('Error deleting profile picture:', e)
-            return jsonify({'message': 'Error deleting profile picture'}), 500
+	except Exception as e:
+		print('Error deleting profile picture:', e)
+		return jsonify({'message': 'Error deleting profile picture'}), 500
 
 @app.route('/meal/<meal_id>', methods=["DELETE"])
 @token_required
@@ -620,12 +630,12 @@ def user_info(user_id):
 		response = {
 			"name": user_info[0],
 			"username": user_info[1],
-			"email": user_info[3],
-			"age": user_info[4],
-			"weight": user_info[6],
-			"height": user_info[7],
-			"gender": user_info[8],
-			"activity_lvl": user_info[9],
+			"email": user_info[2],
+			"age": user_info[3],
+			"weight": user_info[4],
+			"height": user_info[5],
+			"gender": user_info[6],
+			"activity_lvl": user_info[7],
 		}
 		return response, 200
 	else:
@@ -636,13 +646,15 @@ def user_info(user_id):
 def user_picture(user_id):
 	if int(user_id) == g.user.get('id'):
 		
-		
+		image_name = select_users_image_name_by_id(get_db(), user_id)
+		if not image_name:
+			return jsonify({'message': 'Image name is not in database'}), 404
+
 		path = os.path.join(app.config['picture_folder'], image_name)		
 		if not os.path.exists(path):
-			print('Image not found', path, 'picture folder', app.config['picture_folder'])
 			return jsonify({'message': 'Image not found'}), 404
 		
-		return send_from_directory(directory=app.config['picture_folder'], path='1_joachim.png', as_attachment=True)
+		return send_from_directory(directory=app.config['picture_folder'], path=image_name, as_attachment=True)
 	else:
 		return jsonify({'message': 'Unauthorized'}), 401
 

@@ -25,12 +25,12 @@ def select_user_by_token(conn, token):
     return run_select_query(conn, sql, token)
 
 def select_info_for_user_by_id(conn, user_id):
-    sql = "SELECT name, username, password, email, age, weight, height, gender, activity_lvl FROM users WHERE user_no=?"
+    sql = "SELECT name, username, email, age, weight, height, gender, activity_lvl FROM users WHERE user_no=?"
     return run_select_query(conn, sql, user_id)
 
 def select_users_image_name_by_id(conn, user_id):
-    sql = "SELECT profile_picture_link FROM users WHERE user_no=?"
-    return run_select_query(conn, sql, user_id)
+    sql = "SELECT profile_picture_name FROM users WHERE user_no=?"
+    return run_select_query(conn, sql, user_id)[0]
 
 def select_user_no_by_username(conn, username):
     sql = "SELECT user_no FROM users WHERE username=?"
@@ -303,10 +303,10 @@ def select_password_by_id(conn, id):
     except sqlite3.Error as err:
         print("Error, selecting password by user id: {}".format(err))
 
-def select_user_profile_picture_path (conn, user_no):
+def select_user_profile_picture_name(conn, user_no):
     cur = conn.cursor()
     try:
-        cur.execute("SELECT profile_picture_link FROM users WHERE user_no = ?", (user_no,))
+        cur.execute("SELECT profile_picture_name FROM users WHERE user_no = ?", (user_no,))
         return cur.fetchone()[0]
     except sqlite3.Error as err:
         print("Error, selecting profile picture link: {}". format(err))

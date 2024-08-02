@@ -148,11 +148,10 @@ def update_password_by_user_id(conn, password, user_id):
     except sqlite3.Error as err:
         print("Error: {}".format(err))
     
-def update_user_profile_picture(conn, file_path, user_id):
-    print(user_id)
+def update_user_profile_picture(conn, filename, user_id):
     cur = conn.cursor()
     try:
-        cur.execute("UPDATE users SET profile_picture_link = ? WHERE user_no = ?", (file_path, user_id,))
+        cur.execute("UPDATE users SET profile_picture_name = ? WHERE user_no = ?", (filename, user_id,))
         conn.commit()
     except sqlite3.Error as err:
         print("Error: {}".format(err))

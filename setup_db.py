@@ -25,7 +25,7 @@ sql_create_users_table = """CREATE TABLE IF NOT EXISTS users (
                              password TEXT,
                              email TEXT UNIQUE,
                              age INTEGER,
-                             profile_picture_link TEXT, 
+                             profile_picture_name TEXT, 
                              weight INTEGER,
                              height INTEGER,
                              gender INTEGER CHECK (gender IN (1, 2)), -- 1 for Male, 2 for Female

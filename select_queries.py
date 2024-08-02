@@ -25,7 +25,11 @@ def select_user_by_token(conn, token):
     return run_select_query(conn, sql, token)
 
 def select_info_for_user_by_id(conn, user_id):
-    sql = "SELECT name, username, password, email, age, profile_picture_link, weight, height, gender, activity_lvl FROM users WHERE user_no=?"
+    sql = "SELECT name, username, password, email, age, weight, height, gender, activity_lvl FROM users WHERE user_no=?"
+    return run_select_query(conn, sql, user_id)
+
+def select_users_image_name_by_id(conn, user_id):
+    sql = "SELECT profile_picture_link FROM users WHERE user_no=?"
     return run_select_query(conn, sql, user_id)
 
 def select_user_no_by_username(conn, username):
@@ -38,6 +42,10 @@ def select_password_for_given_user(conn, username):
 
 def select_user_id_and_username(conn, username):
     sql = "SELECT user_no, username FROM users WHERE username=?"
+    return run_select_query(conn, sql, username)
+
+def select_user_id_and_password(conn, username):
+    sql = "SELECT user_no, password FROM users WHERE username=?"
     return run_select_query(conn, sql, username)
 
 ##### fetchAll #####

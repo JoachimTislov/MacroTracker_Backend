@@ -1,6 +1,6 @@
 from functools import wraps
 
-from flask import Flask, request, g , jsonify 
+from flask import Flask, request, g, jsonify, send_from_directory
 
 import os
 
@@ -16,8 +16,8 @@ from insert_queries import add_user, add_meal_to_calender, add_ingredient, add_i
 
 from delete_queries import delete_meal, delete_meal_from_calender, delete_ingredient, delete_ingredient_from_specific_meal_with_ingredient_and_meal_id, delete_ingredient_from_meals_with_ingredient_id, delete_ingredients_from_meal_with_meal_id
 
-from select_queries import (select_all_users_username, select_password_for_given_user, select_all_users_username_except_one, select_all_users_emails_except_one,
-select_meal_calender, select_personal_meals_with_ingredients, select_user_by_token, select_user_no_by_username, select_meals_the_ingredient_were_in, select_users_meals, select_users_ingredients, select_users_calender_entries,
+from select_queries import (select_all_users_username, select_all_users_username_except_one, select_all_users_emails_except_one,
+select_meal_calender, select_personal_meals_with_ingredients, select_user_by_token, select_user_id_and_password, select_user_no_by_username, select_meals_the_ingredient_were_in, select_users_meals, select_users_ingredients, select_users_calender_entries,
 select_info_for_user_by_id, select_average_macros, select_personal_ingredients, select_ingredient_by_id, select_password_by_id, select_user_profile_picture_path, select_all_users_emails)
 
 from update_queries import (update_user_info, update_personal_meal, update_password_by_user_id,
@@ -37,7 +37,7 @@ app = Flask(__name__)
 CORS(app)
 
 app.secret_key = os.environ.get('API_KEY')
-app.config['picture_folder'] = "/user-images"
+app.config['picture_folder'] = "./user-images"
 
 def get_db():
     if 'db' not in g:
@@ -96,21 +96,27 @@ def loginPage():
 	username = request.json['username']
 	password = request.json['password']
 
-	users_password = select_password_for_given_user(get_db(), username) #Indexing the tuple
+	user = select_user_id_and_password(get_db(), username) #Indexing the tuple
+	user_id = user[0]
+	users_password = user[1]
+	
+	print(user)
 
 	if not isUsernameValid(username):
 		return jsonify({'message:' 'Invalid Username'}), 403
 	
+	users_password = user[1]
 	if users_password is None:
 		return jsonify({'message': 'Wrong Password'}), 401
 	
-	elif isPasswordValid(password) and check_password(password, users_password[0]):
+	print(users_password)
+	if isPasswordValid(password) and check_password(password, users_password):
 
 		token = str(uuid4())
 		result = update_user_token(get_db(), token, username)
 		
 		if result:
-			return jsonify({'token': token}), 200
+			return jsonify({'token': token, 'user_id': user_id}), 200
 		else:
 			return jsonify({'message': 'Error handling token'}), 422
 
@@ -222,41 +228,42 @@ def update_user_information():
 @app.route('/profile_picture', methods=['POST'])
 @token_required
 def upload_profile_picture():
-		try:
-			if 'file' not in request.files:
-				return jsonify({'message': 'No file'}), 400
+	try:
+		if 'file' not in request.files:
+			return jsonify({'message': 'No file found'}), 400
 
-			file = request.files['file']
+		file = request.files['file']
 
-			if validatePicture(file.filename) is not True:
-				return jsonify({'message': 'File format is not accepted'}), 406
+		if validatePicture(file.filename) is not True:
+			return jsonify({'message': 'File format is not accepted'}), 406
 
-			if file:
-				filename = secure_filename(f"{g.user_id}_{file.filename}")
+		if file:
+			user_id = g.user.get('id')
+			filename = secure_filename(f"{user_id}_${file.filename}")
 
-				if not os.path.exists(app.config['picture_folder']):
-					os.mkdir(app.config['picture_folder'])
-				
-				file_path = os.path.join(app.config['picture_folder'], filename)
-				file.save(file_path)
-				update_user_profile_picture(get_db(), file_path, g.user_id)
-
-				return jsonify({'message': 'Profile picture uploaded successfully'}), 200
+			if not os.path.exists(app.config['picture_folder']):
+				os.mkdir(app.config['picture_folder'])
 			
-			else:
+			file_path = os.path.join(app.config['picture_folder'], filename)
+			file.save(file_path)
+			update_user_profile_picture(get_db(), file_path, user_id)
 
-				return jsonify({'message': 'Did not receive any file'}), 400
+			return jsonify({'message': 'Profile picture uploaded successfully'}), 200
+		
+		else:
+			return jsonify({'message': 'Did not receive any file'}), 400
+		
+	except Exception as e:
+            print('Error uploading profile picture:', e)
+            return jsonify({'message': 'Error uploading profile picture'}), 50
 			
-		except Exception as e:
-			print('Error uploading profile picture:', e)
-			return jsonify({'message': 'Error uploading profile picture'}), 400
 			
 @app.route('/profile_picture', methods=['DELETE'])
 @token_required
 def delete_profile_picture():
     
         try:
-            user_id = g.user.id
+            user_id = g.user.get('id')
             db = get_db()
             file_path = select_user_profile_picture_path(db, user_id)
 
@@ -276,7 +283,7 @@ def delete_profile_picture():
 def deleteMeal(meal_id):
 	
 		try:
-			user_id = g.user.id
+			user_id = g.user.get('id')
 
 			meal_ids = select_users_meals(get_db(), user_id)
 			if validateOwnership(meal_id, meal_ids) is True:
@@ -297,7 +304,7 @@ def deleteMeal(meal_id):
 def deleteIngredient(ingredient_id):
 	
 		try:
-			user_id = g.user.id
+			user_id = g.user.get('id')
 
 			ingredient_ids = select_users_ingredients(get_db(), user_id)
 			if validateOwnership(ingredient_id, ingredient_ids) is True:
@@ -326,7 +333,7 @@ def deleteIngredient(ingredient_id):
 def delete_ingredient_from_meal(ingredient_id, meal_id):
 	
 		try:
-			user_id = g.user.id
+			user_id = g.user.get('id')
 		
 
 			ingredient_ids = select_users_ingredients(get_db(), user_id)
@@ -351,7 +358,7 @@ def delete_ingredient_from_meal(ingredient_id, meal_id):
 def delete_meal_fromCalender(calender_id):
 	
 		try:
-			user_id = g.user.id
+			user_id = g.user.get('id')
 
 			meal_ids = select_users_meals(get_db(), user_id)
 
@@ -387,7 +394,7 @@ def findIngredients_for_meal(data):
 	return ingredients_for_meal
 
 def addNewIngredientsAndUpdateOldOnes(ingredients_for_meal, meal_id):
-	user_id = g.user.id
+	user_id = g.user.get('id')
 
 	for ingredient in ingredients_for_meal:
 		if(ingredient['ingredient_id'] == ''):
@@ -414,7 +421,7 @@ def addNewIngredientsAndUpdateOldOnes(ingredients_for_meal, meal_id):
 			add_ingredient_to_meal(get_db(), meal_id, ingredient['ingredient_id'])
 
 def updatePersonalMeal(ingredients_for_meal, meal_name, isMealInDatabase, meal_id):
-	user_id = g.user.id
+	user_id = g.user.get('id')
 
 	meal_info = {
 				"name": meal_name,
@@ -474,7 +481,7 @@ def addMeal():
 def editMeal(meal_id):
 	
 		try:
-			user_id = g.user.id
+			user_id = g.user.get('id')
 			meal_ids = select_users_meals(get_db(), user_id)
 			if validateOwnership(meal_id, meal_ids) is not True:
 				return 'User cant edit others meals', 401
@@ -543,7 +550,7 @@ def addIngredient():
 		if validate_ingredient is not True:
 			return validate_ingredient, 500
 		
-		user_id = g.user.id
+		user_id = g.user.get('id')
 		add_ingredient(
 			get_db(), 
 			user_id, 
@@ -560,7 +567,7 @@ def addIngredient():
 @app.route('/ingredient/<ingredient_id>', methods=["PUT"])
 @token_required
 def editIngredient(ingredient_id):
-		ingredient_ids = select_users_ingredients(get_db(), g.user.id)
+		ingredient_ids = select_users_ingredients(get_db(), g.user.get('id'))
 		if validateOwnership(ingredient_id, ingredient_ids) is not True:
 			return 'User cant edit others ingredients', 401
 
@@ -607,28 +614,42 @@ def editIngredient(ingredient_id):
 @app.route('/user_info/<user_id>', methods=["GET"])
 @token_required
 def user_info(user_id):
-	if int(user_id) == g.user.id:
-		tuple = select_info_for_user_by_id(get_db(), user_id)
+	if int(user_id) == g.user.get('id'):
+		user_info = select_info_for_user_by_id(get_db(), user_id)
 
-		arr = {
-			"name": tuple[0],
-			"username": tuple[1],
-			"email": tuple[3],
-			"age": tuple[4],
-			"profile_picture_link": tuple[5],
-			"weight": tuple[6],
-			"height": tuple[7],
-			"gender": tuple[8],
-			"activity_lvl": tuple[9],
+		response = {
+			"name": user_info[0],
+			"username": user_info[1],
+			"email": user_info[3],
+			"age": user_info[4],
+			"weight": user_info[6],
+			"height": user_info[7],
+			"gender": user_info[8],
+			"activity_lvl": user_info[9],
 		}
-		return arr, 200
+		return response, 200
 	else:
-		return 'Unauthorized', 401
+		return jsonify({'message': 'Unauthorized'}), 401
+	
+@app.route('/user_picture/<user_id>', methods=["GET"])
+@token_required
+def user_picture(user_id):
+	if int(user_id) == g.user.get('id'):
+		
+		
+		path = os.path.join(app.config['picture_folder'], image_name)		
+		if not os.path.exists(path):
+			print('Image not found', path, 'picture folder', app.config['picture_folder'])
+			return jsonify({'message': 'Image not found'}), 404
+		
+		return send_from_directory(directory=app.config['picture_folder'], path='1_joachim.png', as_attachment=True)
+	else:
+		return jsonify({'message': 'Unauthorized'}), 401
 
 @app.route('/personal_meals/<user_id>', methods=["GET"])
 @token_required
 def personal_meals(user_id):
-	if int(user_id) == g.user.id:
+	if int(user_id) == g.user.get('id'):
 		return select_personal_meals_with_ingredients(get_db(), user_id), 200
 	else:
 		return 'Unauthorized', 401
@@ -636,7 +657,7 @@ def personal_meals(user_id):
 @app.route('/personal_ingredients/<user_id>', methods=["GET"])
 @token_required
 def personal_ingredients(user_id):
-	if int(user_id) == g.user.id:
+	if int(user_id) == g.user.get('id'):
 		return select_personal_ingredients(get_db(), user_id), 200
 	else:
 		return 'Unauthorized', 401
@@ -644,7 +665,7 @@ def personal_ingredients(user_id):
 @app.route('/meal_calender/<user_id>/<date>', methods=["GET"])
 @token_required
 def meal_calender(user_id, date):
-	if int(user_id) == g.user.id:
+	if int(user_id) == g.user.get('id'):
 		return select_meal_calender(get_db(), user_id, date), 200
 	else:
 		return 'Unauthorized', 401
@@ -652,7 +673,7 @@ def meal_calender(user_id, date):
 @app.route('/average_macros/<user_id>', methods=["GET"])
 @token_required
 def average_macros(user_id):
-	if int(user_id) == g.user.id:
+	if int(user_id) == g.user.get('id'):
 		return select_average_macros(get_db(), user_id), 200
 	else:
 		return 'Unauthorized', 401

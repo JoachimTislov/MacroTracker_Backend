@@ -4,12 +4,12 @@ from sqlite3 import Error
 
 from encryption import get_hashed_password
 
-def add_user_with_all_information(conn, name, username, password, email, age, profile_picture_link, weight, height, gender, activity_lvl):
-    sql = ''' INSERT INTO users(name, username, password, email, age, profile_picture_link, weight, height, gender, activity_lvl)
+def add_user_with_all_information(conn, name, username, password, email, age, profile_picture_name, weight, height, gender, activity_lvl):
+    sql = ''' INSERT INTO users(name, username, password, email, age, profile_picture_name, weight, height, gender, activity_lvl)
               VALUES(?,?,?,?,?,?,?,?,?,?) '''
     try:
         cur = conn.cursor()
-        cur.execute(sql, (name, username, get_hashed_password(password), email, age, profile_picture_link, weight, height, gender, activity_lvl))
+        cur.execute(sql, (name, username, get_hashed_password(password), email, age, profile_picture_name, weight, height, gender, activity_lvl))
         conn.commit()
     except Error as err:
         print("Error, inserting add_user_with_all_information: {}".format(err))

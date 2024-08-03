@@ -100,8 +100,6 @@ def loginPage():
 	user_id = user[0]
 	users_password = user[1]
 	
-	print(user)
-
 	if not isUsernameValid(username):
 		return jsonify({'message:' 'Invalid Username'}), 403
 	
@@ -109,7 +107,6 @@ def loginPage():
 	if users_password is None:
 		return jsonify({'message': 'Wrong Password'}), 401
 	
-	print(users_password)
 	if isPasswordValid(password) and check_password(password, users_password):
 
 		token = str(uuid4())
@@ -255,6 +252,7 @@ def upload_profile_picture():
 				os.mkdir(app.config['picture_folder'])
 			
 			file_path = os.path.join(app.config['picture_folder'], filename)
+
 			file.save(file_path)
 			update_user_profile_picture(get_db(), filename, user_id)
 
@@ -275,6 +273,10 @@ def delete_profile_picture():
 		user_id = g.user.get('id')
 		db = get_db()
 		file_name = select_user_profile_picture_name(db, user_id)
+
+		if not file_name:
+			return jsonify({'message': 'No image to delete'}), 200
+
 		file_path = os.path.join(app.config['picture_folder'], file_name)
 
 		if file_path and os.path.exists(file_path):
@@ -291,7 +293,6 @@ def delete_profile_picture():
 @app.route('/meal/<meal_id>', methods=["DELETE"])
 @token_required
 def deleteMeal(meal_id):
-	
 		try:
 			user_id = g.user.get('id')
 

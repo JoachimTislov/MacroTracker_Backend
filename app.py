@@ -43,6 +43,7 @@ def get_db():
     if 'db' not in g:
         g.db = create_connection(r"./database.db")  
     return g.db
+	
 
 def token_required(f):
 	@wraps(f)
@@ -97,27 +98,33 @@ def loginPage():
 	password = request.json['password']
 
 	user = select_user_id_and_password(get_db(), username) #Indexing the tuple
-	user_id = user[0]
-	users_password = user[1]
-	
-	if not isUsernameValid(username):
-		return jsonify({'message:' 'Invalid Username'}), 403
-	
-	users_password = user[1]
-	if users_password is None:
-		return jsonify({'message': 'Wrong Password'}), 401
-	
-	if isPasswordValid(password) and check_password(password, users_password):
 
+	if not user:
+		return jsonify({'message': 'Invalid Username, user not found'}), 406
+
+	username_validation = isUsernameValid(username)
+	if isinstance(username_validation, str):
+		return jsonify({'message:': username_validation}), 406
+	
+	password_validation = isPasswordValid(password) 
+	if isinstance(password_validation, str):
+		return jsonify({ 'message': password_validation})
+	
+	users_password = user[1]
+	if check_password(password, users_password):
 		token = str(uuid4())
 		result = update_user_token(get_db(), token, username)
 		
 		if result:
-			return jsonify({'token': token, 'user_id': user_id}), 200
+			user_id = user[0]
+			return jsonify({'message': 'Logged in successfully', 'token': token, 'user_id': user_id, 'username': username}), 200
 		else:
 			return jsonify({'message': 'Error handling token'}), 422
 		
-@app.route('/logout', methods=["GET"])
+	else:
+		return jsonify({'message': 'Wrong password'}), 406
+
+@app.route('/logout', methods=["POST"])
 @token_required
 def logout():
 	result = update_user_token(get_db(), None, g.user.get('username'))
@@ -130,59 +137,69 @@ def logout():
 @app.route('/register', methods=["GET","POST"])
 @api_key_required
 def register():
-	username = request.json['register_username']
+	username = request.json['username']
 	usernames = select_all_users_username(get_db())
 
 	for nickname in usernames:
 		if username == nickname[0]:
-			return 'Username is already taken', 500
+			return jsonify({'message': 'Username is already taken'}), 500
 
-	password = request.json['register_password']
+	password = request.json['password']
 	confirm_password = request.json['confirm_password']
-	gender = int(request.json['_gender'])
-	activity_lvl = int(request.json['_activity_lvl'])
-	email = request.json['register_email']
-	name = request.json['register_name']
-	weight = float(request.json['register_weight'])
-	height = float(request.json['register_height'])
-	age = int(request.json['register_age'])
+	gender = int(request.json['gender'])
+	activity_lvl = int(request.json['activity_lvl'])
+	email = request.json['email']
+	name = request.json['name']
+	weight = float(request.json['weight'])
+	height = float(request.json['height'])
+	age = int(request.json['age'])
 
 	for user_email in select_all_users_emails(get_db()):
 		if email == user_email:
-			return 'Email is already taken', 500
+			return jsonify({'message': 'Email is already taken'}), 500
 
 	register_validation = validateUserInfo(username, gender, activity_lvl, email, name, weight, height, age)
 
-	if(not isPasswordValid(password) or not isPasswordValid(confirm_password) or 
-	   password != confirm_password or not register_validation):
-		
-		return 400
+	if isinstance(register_validation, str):
+		jsonify({'message': register_validation}), 400
 
-	hashedPassword = get_hashed_password(password)
-	
+	for value in [password, confirm_password]:
+		passwordValid = isPasswordValid(value)
+		if isinstance(passwordValid, str):
+			jsonify({'message': passwordValid}), 400
+
+	if password != confirm_password:
+		return jsonify({'message': 'Passwords do not match'}), 400
+
 	## Adding a new user ##
-	result = add_user(get_db(), username, hashedPassword, gender, activity_lvl, email, name, weight, height, age)
+	result = add_user(get_db(), username, get_hashed_password(password), gender, activity_lvl, email, name, weight, height, age)
 
 	if result:
-		return 200
+		return jsonify({'message': 'Successfully registered your account'}), 200
 	else:
-		return 400
+		return jsonify({'message': 'Failed registration'}), 400
 
-@app.route('/password', methods=["PUT"])
+@app.route('/password/<user_id>', methods=["PUT"])
 @token_required
-def change_password():
+def change_password(user_id):
+
+	if user_id != g.user.get('id'):
+		return jsonify({ 'message': 'Unauthorized'}), 401
+	
 	old_password = request.json['old_password']
 	new_password = request.json['new_password']
-	confirm_new_password = request.json['confirm_new_password']
+	confirm_new_password = request.json['new_confirm_password']
 
 	arr = [old_password, new_password, confirm_new_password]
 
 	for password in arr:
-		if isPasswordValid(password) is False:
-			return 400
+		result = isPasswordValid(password)
+		if isinstance(result, str):
+			return jsonify({'message': result}), 400
 
-	if not check_password(old_password, select_password_by_id(get_db(), 1)):
-		return 'Old password is incorrect', 400
+	old_password_in_database = select_password_by_id(get_db(), 1)
+	if not check_password(old_password, old_password_in_database):
+		return jsonify({'message': 'Old password is incorrect'}), 400
 	
 	if new_password != confirm_new_password:
 		return jsonify({'message': 'The new passwords does not match'}), 400
@@ -200,7 +217,6 @@ def update_user_information():
 			name = request.json['name']
 			username = request.json['username']
 			age = int(request.json['age'])
-			email = request.json['email']
 			height = float(request.json['height'])
 			weight = float(request.json['weight'])
 			gender = int(request.json['gender'])
@@ -208,25 +224,31 @@ def update_user_information():
 			email = request.json['email']
 
 			user_id = select_user_no_by_username(get_db(), username)
+
+			if user_id != g.user.get('id'):
+				return jsonify({ 'message': 'Unauthorized' }), 401
 			
 			usernames = select_all_users_username_except_one(get_db(), user_id)
 
-			for nickname in usernames:
-				if username == nickname[0]:
-					return jsonify({'message': 'Username is already taken'}), 500
+			if usernames:
+				for nickname in usernames:
+					if username == nickname[0]:
+						return jsonify({'message': 'Username is already taken'}), 406
 				
 			emails = select_all_users_emails_except_one(get_db(), user_id)
 
-			for user_email in emails:
-				if email == user_email[0]:
-					return jsonify({'message': 'Email is already taken'}), 500
+			if emails:
+				for user_email in emails:
+					if email == user_email[0]:
+						return jsonify({'message': 'Email is already taken'}), 406
 
 			user_info_validation = validateUserInfo(username, gender, activity_lvl, email, name, weight, height, age)
 
-			if(user_info_validation is not True): 
-				return jsonify({'message': user_info_validation}), 400
+			if isinstance(user_info_validation, str): 
+				return jsonify({'message': user_info_validation}), 406
 
 			update_user_info(get_db(), user_id, name, username, age, email, height, weight, gender, activity_lvl)
+
 			return jsonify({'message': 'Successfully updated your user information'}), 200
 		
 		except sqlite3.Error as err:
@@ -237,11 +259,11 @@ def update_user_information():
 def upload_profile_picture():
 	try:
 		if 'file' not in request.files:
-			return jsonify({'message': 'No file found'}), 400
+			return jsonify({'message': 'No file found'}), 404
 
 		file = request.files['file']
 
-		if validatePicture(file.filename) is not True:
+		if not validatePicture(file.filename):
 			return jsonify({'message': 'File format is not accepted'}), 406
 
 		if file:
@@ -274,17 +296,14 @@ def delete_profile_picture():
 		db = get_db()
 		file_name = select_user_profile_picture_name(db, user_id)
 
-		if not file_name:
-			return jsonify({'message': 'No image to delete'}), 200
-
-		file_path = os.path.join(app.config['picture_folder'], file_name)
+		file_path = os.path.join(app.config['picture_folder'], file_name) if file_name else None
 
 		if file_path and os.path.exists(file_path):
 			os.remove(file_path)
 
 		update_user_profile_picture(db, None, user_id)
 
-		return jsonify({'message': 'Profile picture deleted successfully'}), 200
+		return jsonify({'message': 'Profile picture successfully deleted'}), 200
 
 	except Exception as e:
 		print('Error deleting profile picture:', e)
@@ -297,59 +316,28 @@ def deleteMeal(meal_id):
 			user_id = g.user.get('id')
 
 			meal_ids = select_users_meals(get_db(), user_id)
-			if validateOwnership(meal_id, meal_ids) is True:
+			if validateOwnership(meal_id, meal_ids):
 
 				delete_ingredients_from_meal_with_meal_id(get_db(), meal_id)
 				delete_meal(get_db(), meal_id)
 
-				
-				return 200
+				return jsonify({'message': 'Deleted meal successfully'}), 200
 			else:
 				return jsonify({'message': 'User cant delete others meals'}), 401
 
 		except sqlite3.Error as err:
         		print("Error: {}".format(err))
 		
-@app.route('/ingredient/<ingredient_id>', methods=["DELETE"])
-@token_required
-def deleteIngredient(ingredient_id):
-	
-		try:
-			user_id = g.user.get('id')
-
-			ingredient_ids = select_users_ingredients(get_db(), user_id)
-			if validateOwnership(ingredient_id, ingredient_ids) is True:
-				
-				ingredient_info = select_ingredient_by_id(get_db(), ingredient_id)
-				meals_the_ingredient_were_in = select_meals_the_ingredient_were_in(get_db(), ingredient_id)
-
-				update_total_macros_of_meal_ingredient_was_used_for(get_db(), meals_the_ingredient_were_in, ingredient_info)
-
-				if(len(meals_the_ingredient_were_in) >= 1):
-					delete_ingredient_from_meals_with_ingredient_id(get_db(), ingredient_id)
-
-			
-				delete_ingredient(get_db(), ingredient_id)
-
-				
-				return 200
-			else:
-				return 'User cant delete others ingredient', 401
-			
-		except sqlite3.Error as err:
-        		print("Error: {}".format(err))
-
 @app.route('/meal/<ingredient_id>/<meal_id>', methods=["DELETE"])
 @token_required
 def delete_ingredient_from_meal(ingredient_id, meal_id):
 	
 		try:
 			user_id = g.user.get('id')
-		
-
+	
 			ingredient_ids = select_users_ingredients(get_db(), user_id)
 			meal_ids = select_users_meals(get_db(), user_id)
-			if validateOwnership(ingredient_id, ingredient_ids) is True and validateOwnership(meal_id, meal_ids) is True:
+			if validateOwnership(ingredient_id, ingredient_ids) and validateOwnership(meal_id, meal_ids):
 
 				ingredient_info = select_ingredient_by_id(get_db(), ingredient_id)
 			
@@ -357,9 +345,9 @@ def delete_ingredient_from_meal(ingredient_id, meal_id):
 				
 				delete_ingredient_from_specific_meal_with_ingredient_and_meal_id(get_db(), ingredient_id, meal_id)
 
-				return 200
+				return jsonify({'message': f'Deleted {ingredient_info[2]} from the meal, successfully'}), 200
 			else:
-				return 'User cant delete others ingredient from  others meals', 401
+				return jsonify({'message': 'User cant delete others ingredient from others meals'}), 401
 		
 		except sqlite3.Error as err:
 			print("Error: {}".format(err))
@@ -367,7 +355,6 @@ def delete_ingredient_from_meal(ingredient_id, meal_id):
 @app.route('/calender/<calender_id>', methods=["DELETE"])
 @token_required
 def delete_meal_fromCalender(calender_id):
-	
 		try:
 			user_id = g.user.get('id')
 
@@ -377,13 +364,14 @@ def delete_meal_fromCalender(calender_id):
 			for id in meal_ids:
 				calender_ids += select_users_calender_entries(get_db(), id)
 
-			if validateOwnership(calender_id, calender_ids) is True:
+			if validateOwnership(calender_id, calender_ids):
+
 				delete_meal_from_calender(get_db(), calender_id)
 
-				return 200
+				return jsonify({'message': 'Deleted calender entry successfully'}), 200
 		
 			else:
-				return 'User cant delete others calender entries', 401
+				return jsonify({'message': 'User cant delete others calender entries'}), 401
 			
 		except sqlite3.Error as err:
 			print("Error: {}".format(err))
@@ -469,44 +457,45 @@ def addMeal():
 			meal_name = data['meal_name']
 
 			result = isMealNameValid(meal_name)
-			if result is not True:
-				return result, 400
+			if isinstance(result, str):
+				return jsonify({'message': result }), 400
 
 			data.pop('meal_name')
 			ingredients_for_meal = findIngredients_for_meal(data)
 
 			result = validateIngredients_for_meal(ingredients_for_meal)
-			if result is not True:
-				return result, 200
+			if isinstance(result, str):
+				return jsonify({'message': result }), 200
 
 			meal_id = updatePersonalMeal(ingredients_for_meal, meal_name, False, None)
 			
 			addNewIngredientsAndUpdateOldOnes(ingredients_for_meal, meal_id)
 
-			return 200
+			return jsonify({'message': f'Meal {meal_name} added successfully'}), 200
 		except sqlite3.Error as err:
         		print("Error: {}".format(err))
 
 @app.route('/meal/<meal_id>', methods=["PUT"])
 @token_required
 def editMeal(meal_id):
-	
 		try:
 			user_id = g.user.get('id')
 			meal_ids = select_users_meals(get_db(), user_id)
-			if validateOwnership(meal_id, meal_ids) is not True:
-				return 'User cant edit others meals', 401
+			if not validateOwnership(meal_id, meal_ids):
+				return jsonify({ 'message': 'User cant edit others meals' }), 401
 
 			data = request.get_json()
 
+			print(data)
+
 			if(len(data) == 1):
 				update_personal_meal_name(get_db(), meal_id, data['meal_name'])
-				return 200
+				return jsonify({'message': 'Ingredient edited successfully'}), 200
 			
-
 			meal_name = data['meal_name']
-			if isMealNameValid(meal_name) is not True:
-				return 500
+			result = isMealNameValid(meal_name)
+			if not result:
+				return jsonify({ 'message': isMealNameValid(meal_name) }), 406
 
 			data.pop('meal_name')
 
@@ -519,28 +508,26 @@ def editMeal(meal_id):
 			updatePersonalMeal(ingredients_for_meal, meal_name, True, meal_id)
 			addNewIngredientsAndUpdateOldOnes(ingredients_for_meal, meal_id)
 
-			return 200
+			return jsonify({'message': f'Meal {meal_name} edited successfully'}), 200
 		except sqlite3.Error as err:
         		print("Error: {}".format(err))
 		
-@app.route('/calender/', methods=["POST"])
+@app.route('/calender', methods=["POST"])
 @token_required
 def add_meal_to_given_date():
-	
-		try:
-			data = request.json
+	try:
+		data = request.json
 
-			result = isCalenderDateAndTimeValid(data['date'], data['time'])
-			if result is not True:
-				return result, 406
+		result = isCalenderDateAndTimeValid(data['date'], data['time'])
+		if not result:
+			return jsonify({ 'message': result}), 406
 
-			add_meal_to_calender(get_db(), data['id'], data['date'], data['time'])
+		add_meal_to_calender(get_db(), data['id'], data['date'], data['time'])
 
-			return 200
-		except sqlite3.Error as err:
-			print("Error: {}".format(err))
+		return jsonify({'message': 'Meal added successfully'}), 200
+	except sqlite3.Error as err:
+        		print("Error: {}".format(err))
 		
-
 @app.route('/ingredient', methods=["POST"])
 @token_required
 def addIngredient():
@@ -573,7 +560,7 @@ def addIngredient():
 			fat,
 			sugar)
 		
-		return 200
+		return jsonify({'message': f'Ingredient: {name} added successfully'}), 200
 	
 @app.route('/ingredient/<ingredient_id>', methods=["PUT"])
 @token_required
@@ -619,7 +606,33 @@ def editIngredient(ingredient_id):
 
 		UPDATE_reCalcMacrosForMeals(get_db(), personal_meal_ids, macros_diff)
 
-		return 200
+		return jsonify({'message': f'Ingredient {name} edited successfully'}), 200
+
+@app.route('/ingredient/<ingredient_id>', methods=["DELETE"])
+@token_required
+def deleteIngredient(ingredient_id):
+		try:
+			user_id = g.user.get('id')
+
+			ingredient_ids = select_users_ingredients(get_db(), user_id)
+			if validateOwnership(ingredient_id, ingredient_ids) is True:
+				
+				ingredient_info = select_ingredient_by_id(get_db(), ingredient_id)
+				meals_the_ingredient_were_in = select_meals_the_ingredient_were_in(get_db(), ingredient_id)
+
+				update_total_macros_of_meal_ingredient_was_used_for(get_db(), meals_the_ingredient_were_in, ingredient_info)
+
+				if(len(meals_the_ingredient_were_in) >= 1):
+					delete_ingredient_from_meals_with_ingredient_id(get_db(), ingredient_id)
+
+				delete_ingredient(get_db(), ingredient_id)
+
+				return jsonify({'message': f'Deleted {ingredient_info[2]} ingredient successfully'}), 200
+			else:
+				return jsonify({'message': 'User cant delete others ingredient'}), 401
+			
+		except sqlite3.Error as err:
+        		print("Error: {}".format(err))
 
 ##### GET #####
 @app.route('/user_info/<user_id>', methods=["GET"])
@@ -629,15 +642,18 @@ def user_info(user_id):
 		user_info = select_info_for_user_by_id(get_db(), user_id)
 
 		response = {
-			"name": user_info[0],
-			"username": user_info[1],
-			"email": user_info[2],
-			"age": user_info[3],
-			"weight": user_info[4],
-			"height": user_info[5],
-			"gender": user_info[6],
-			"activity_lvl": user_info[7],
+			"Name": user_info[0],
+			"Username": user_info[1],
+			"Email": user_info[2],
+			"Age": user_info[3],
+			"Weight": user_info[4],
+			"Height": user_info[5],
+			"Gender": user_info[6],
+			"Activity lvl": user_info[7],
 		}
+
+		print(response)
+
 		return response, 200
 	else:
 		return jsonify({'message': 'Unauthorized'}), 401
@@ -646,16 +662,16 @@ def user_info(user_id):
 @token_required
 def user_picture(user_id):
 	if int(user_id) == g.user.get('id'):
-		
 		image_name = select_users_image_name_by_id(get_db(), user_id)
 		if not image_name:
-			return jsonify({'message': 'Image name is not in database'}), 404
+			return jsonify({'message': 'Feel free to upload a profile picture'}), 200
+			#return jsonify({'message': 'Your profile picture is not in our system'}), 404
 
 		path = os.path.join(app.config['picture_folder'], image_name)		
 		if not os.path.exists(path):
-			return jsonify({'message': 'Image not found'}), 404
+			return jsonify({'message': 'We could not find your Profile picture, sorry'}), 404
 		
-		return send_from_directory(directory=app.config['picture_folder'], path=image_name, as_attachment=True)
+		return send_from_directory(directory=app.config['picture_folder'], path=image_name, as_attachment=True), 200
 	else:
 		return jsonify({'message': 'Unauthorized'}), 401
 
@@ -665,7 +681,7 @@ def personal_meals(user_id):
 	if int(user_id) == g.user.get('id'):
 		return select_personal_meals_with_ingredients(get_db(), user_id), 200
 	else:
-		return 'Unauthorized', 401
+		return jsonify({'message': 'Unauthorized'}), 401
 
 @app.route('/personal_ingredients/<user_id>', methods=["GET"])
 @token_required
@@ -673,7 +689,7 @@ def personal_ingredients(user_id):
 	if int(user_id) == g.user.get('id'):
 		return select_personal_ingredients(get_db(), user_id), 200
 	else:
-		return 'Unauthorized', 401
+		return jsonify({'message': 'Unauthorized'}), 401
 	
 @app.route('/meal_calender/<user_id>/<date>', methods=["GET"])
 @token_required
@@ -681,7 +697,7 @@ def meal_calender(user_id, date):
 	if int(user_id) == g.user.get('id'):
 		return select_meal_calender(get_db(), user_id, date), 200
 	else:
-		return 'Unauthorized', 401
+		return jsonify({'message': 'Unauthorized'}), 401
 
 @app.route('/average_macros/<user_id>', methods=["GET"])
 @token_required
@@ -689,7 +705,7 @@ def average_macros(user_id):
 	if int(user_id) == g.user.get('id'):
 		return select_average_macros(get_db(), user_id), 200
 	else:
-		return 'Unauthorized', 401
+		return jsonify({'message': 'Unauthorized'}), 401
 		
 if __name__ == '__main__':
 	app.run(debug=True)

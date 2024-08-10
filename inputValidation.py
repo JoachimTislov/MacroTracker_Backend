@@ -191,9 +191,7 @@ def isIngredientNameValid(string):
 
 def isDateValid(string):
     string = stripString(string)
-
-    print(len(string))
-
+    
     if (len(string) != 10):
         return 'Date is invalid'
     
@@ -234,11 +232,13 @@ def isTimeValid(string):
 
 def isCalenderDateAndTimeValid(date, time):
 
-    if isDateValid(date) is not True:
-        return isDateValid(date)
+    validDate = isDateValid(date)
+    if not validDate:
+        return validDate
     
-    if isTimeValid(time) is not True:
-        return isTimeValid(time)
+    validTime = isTimeValid(time)
+    if not validTime:
+        return validTime
    
     return True
 

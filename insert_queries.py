@@ -11,6 +11,7 @@ def add_user_with_all_information(conn, name, username, password, email, age, pr
         cur = conn.cursor()
         cur.execute(sql, (name, username, get_hashed_password(password), email, age, profile_picture_name, weight, height, gender, activity_lvl))
         conn.commit()
+        cur.close()
     except Error as err:
         print("Error, inserting add_user_with_all_information: {}".format(err))
     
@@ -30,6 +31,7 @@ def add_user(conn, username, password, gender, activity_lvl, email, name, weight
         cur = conn.cursor()
         cur.execute(sql, (username, password, gender, activity_lvl, email, name, weight, height, age))
         conn.commit()
+        cur.close()
         return True
     except Error as err:
         print("Error, inserting add_user: {}".format(err))
@@ -42,6 +44,7 @@ def add_meal(conn, meal_name, user_no, protein, calories, carbohydrates, fat, su
         cur = conn.cursor()
         cur.execute(sql, (meal_name, user_no, round(protein, 2), round(calories, 2), round(carbohydrates, 2), round(fat, 2), round(sugar, 2)))
         conn.commit()
+        cur.close()
         meal_id = cur.lastrowid
 
         return meal_id
@@ -58,6 +61,7 @@ def add_ingredient(conn, user_no, ingredient_name, amount, protein, calories, ca
         cur = conn.cursor()
         cur.execute(sql, (user_no, ingredient_name, amount, round(protein, 2), round(calories, 2), round(carbohydrates, 2), round(fat, 2), round(sugar, 2)))
         conn.commit()
+        cur.close()
         ingredient_id = cur.lastrowid
 
         return ingredient_id
@@ -71,6 +75,7 @@ def add_ingredient_to_meal(conn, personal_meal_no, personal_ingredient_no):
         cur = conn.cursor()
         cur.execute(sql, (personal_meal_no, personal_ingredient_no))
         conn.commit()
+        cur.close()
     except Error as err:
         print("Error, inserting add_ingredient_to_meal: {}".format(err))
   
@@ -82,6 +87,7 @@ def add_meal_to_calender(conn, personal_meal_no, date, time_of_day):
         cur = conn.cursor()
         cur.execute(sql, (personal_meal_no, date, time_of_day))
         conn.commit()
+        cur.close()
     except Error as err:
         print("Error, inserting add_meal_to_calender: {}".format(err))
  

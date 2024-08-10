@@ -6,6 +6,7 @@ def run_select_query(conn, sql_query, identifier):
     try:
         cur.execute(sql_query, (identifier,))
         result = cur.fetchone()
+        cur.close()
 
         if result:
             return result
@@ -53,8 +54,8 @@ def select_all_users_username(conn):
     cur = conn.cursor()
     try:
         cur.execute("SELECT username FROM users")
-
         result = cur.fetchall()
+        cur.close()
 
         if result:
             return result
@@ -69,6 +70,7 @@ def select_all_users_emails(conn):
         result = []
         cur.execute("SELECT email FROM users")
         result = [row[0] for row in cur.fetchall()]
+        cur.close()
 
         if result:
             return result
@@ -81,8 +83,8 @@ def select_all_users_username_except_one(conn, user_id):
     cur = conn.cursor()
     try:
         cur.execute("SELECT username FROM users WHERE user_no != ?", (user_id,))
-
         result = cur.fetchall()
+        cur.close()
 
         if result:
             return result
@@ -96,8 +98,8 @@ def select_all_users_emails_except_one(conn, user_id):
     cur = conn.cursor()
     try:
         cur.execute("SELECT email FROM users WHERE user_no != ?", (user_id,))
-
         result = cur.fetchall()
+        cur.close()
 
         if result:
             return result
@@ -110,8 +112,8 @@ def select_meal_ingredients_by_id(conn, id):
     cur = conn.cursor()
     try:
         cur.execute("SELECT * FROM personal_ingredients WHERE personal_meal_no=?", (id,))
-
         result = cur.fetchall()
+        cur.close()
 
         if result:
             return result
@@ -137,6 +139,7 @@ def select_personal_meals_with_ingredients(conn, user_no):
         personal_meals = []
         cur.execute("SELECT * FROM personal_meals pm WHERE pm.user_no = ?", (user_no,))
         personal_meals += [list(row) for row in cur.fetchall()]
+        cur.close()
 
         meals_with_ingredients = []
         for i, entry in enumerate(personal_meals):
@@ -174,6 +177,7 @@ def select_personal_ingredients(conn, user_no):
         ingredients_data = []
         cur.execute("SELECT * FROM personal_ingredients pi WHERE pi.user_no =?", (user_no,))
         ingredients_data += [list(row) for row in cur.fetchall()]
+        cur.close()
 
         ingredients_arr = []
         for ingredient in ingredients_data:
@@ -202,12 +206,22 @@ def select_meal_calender(conn, user_no, date):
         calender = []
         for entry in meal_data:
             cur.execute("SELECT * FROM meal_calender WHERE personal_meal_no = ? AND date = ?", (entry[0], date,)) 
-            calender += [list(row) for row in cur.fetchall()]
+            calender += [
+                {
+                    'calender_id': row[0],
+                    'meal_name': row[1],
+                    'date': row[2],
+                    'time_of_day': row[3]
+                } 
+                for row in cur.fetchall()
+            ]
 
+        cur.close()
         for entry in calender:
             for row in meal_data:
-                if(entry[1] == row[0]):
-                    entry.append(row[1])
+                if(entry['meal_name'] == row[0]):
+                    entry['meal_name'] = row[1]
+                    
 
         return calender
     except sqlite3.Error as err:
@@ -223,12 +237,31 @@ def select_average_macros(conn, user_no):
         calender = []
         for entry in meal_data:
             cur.execute("SELECT * FROM meal_calender WHERE personal_meal_no = ?", (entry[0],)) 
-            calender += [list(row) for row in cur.fetchall()]
+            calender += [
+                {
+                    'calender_id': row[0],
+                    'meal': row[1],
+                    'date': row[2],
+                    'time_of_day': row[3]
+                } 
+                for row in cur.fetchall()
+            ]
+
+        cur.close()
 
         for entry in calender:
             for row in meal_data:
-                if(entry[1] == row[0]):
-                    entry[1] = row
+                if(entry['meal'] == row[0]):
+                    entry['meal'] =  {
+                        'meal_id': row[0],
+                        'Name': row[1],
+                        'user_id': row[2],
+                        'protein': row[3],
+                        'calories': row[4],
+                        'carbohydrates': row[5],
+                        'fat': row[6],
+                        'sugar': row[7]
+                    }
         
         return calender
     
@@ -240,6 +273,7 @@ def select_meals_the_ingredient_were_in(conn, ingredient_id):
     try:
         cur.execute("SELECT personal_meal_no FROM meal_ingredients mi WHERE mi.personal_ingredient_no =?", (ingredient_id,))
         meal_ids = [row[0] for row in cur.fetchall()]
+        cur.close()
 
         return meal_ids
     except sqlite3.Error as err:
@@ -250,6 +284,7 @@ def select_users_meals(conn, user_id):
     try:
         cur.execute("SELECT personal_meal_no FROM personal_meals pm WHERE pm.user_no =?", (user_id,))
         meal_ids = [row[0] for row in cur.fetchall()]
+        cur.close()
 
         return meal_ids
     except sqlite3.Error as err:
@@ -260,6 +295,7 @@ def select_users_ingredients(conn, user_id):
     try:
         cur.execute("SELECT personal_ingredient_no FROM personal_ingredients pm WHERE pm.user_no =?", (user_id,))
         meal_ids = [row[0] for row in cur.fetchall()]
+        cur.close()
 
         return meal_ids
     except sqlite3.Error as err:
@@ -270,6 +306,7 @@ def select_users_calender_entries(conn, meal_id):
     try:
         cur.execute("SELECT calender_id FROM meal_calender pm WHERE pm.personal_meal_no =?", (meal_id,))
         meal_ids = [row[0] for row in cur.fetchall()]
+        cur.close()
 
         return meal_ids
     except sqlite3.Error as err:
@@ -280,6 +317,7 @@ def select_ingredient_by_id(conn, id):
     try:
         cur.execute("SELECT * FROM personal_ingredients pi WHERE pi.personal_ingredient_no =?", (id,))
         ingredient = list(cur.fetchone())
+        cur.close()
 
         return ingredient
     except sqlite3.Error as err:
@@ -290,16 +328,19 @@ def select_meal_by_id(conn, id):
     try:
         cur.execute("SELECT * FROM personal_meals pm WHERE pm.personal_meal_no =?", (id,))
         meal = list(cur.fetchone())
+        cur.close()
 
         return meal
     except sqlite3.Error as err:
         print("Error, selecting ingredient by id: {}".format(err))
-   
+
 def select_password_by_id(conn, id):
     cur = conn.cursor()
     try:
         cur.execute("SELECT password FROM users u WHERE u.user_no =?", (id,))
-        return cur.fetchone()[0]
+        result = cur.fetchone()[0]
+        cur.close()
+        return result
     except sqlite3.Error as err:
         print("Error, selecting password by user id: {}".format(err))
 
@@ -307,7 +348,9 @@ def select_user_profile_picture_name(conn, user_no):
     cur = conn.cursor()
     try:
         cur.execute("SELECT profile_picture_name FROM users WHERE user_no = ?", (user_no,))
-        return cur.fetchone()[0]
+        result = cur.fetchone()[0]
+        cur.close()
+        return result
+        
     except sqlite3.Error as err:
         print("Error, selecting profile picture link: {}". format(err))
-

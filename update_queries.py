@@ -19,6 +19,7 @@ def update_user_info(conn, user_id, name, username, age, email, height, weight, 
                     WHERE user_no = ?
                     """, (name, username, age, email, height, weight, gender, activity_lvl, user_id,))
         conn.commit()
+        cur.close()
     except sqlite3.Error as err:
         print("Error: {}".format(err))
 
@@ -37,6 +38,7 @@ def update_personal_meal(conn, personal_meal_no, meal_name, protein, calories, c
                     WHERE personal_meal_no = ?
                     """, (personal_meal_no, meal_name, round(protein, 2), round(calories, 2), round(carbohydrates, 2), round(fat, 2), round(sugar, 2), personal_meal_no,))
         conn.commit()
+        cur.close()
     except sqlite3.Error as err:
         print("Error: {}".format(err))
 
@@ -54,6 +56,7 @@ def update_personal_meal_total_macros(conn, personal_meal_no, protein, calories,
                     WHERE personal_meal_no = ?
                     """, (personal_meal_no, round(protein, 2), round(calories, 2), round(carbohydrates, 2), round(fat, 2), round(sugar, 2), personal_meal_no,))
         conn.commit()
+        cur.close()
     except sqlite3.Error as err:
         print("Error: {}".format(err))
 
@@ -67,6 +70,7 @@ def update_personal_meal_name(conn, personal_meal_no, meal_name):
                     WHERE personal_meal_no = ?
                     """, (personal_meal_no, meal_name, personal_meal_no,))
         conn.commit()
+        cur.close()
     except sqlite3.Error as err:
         print("Error: {}".format(err))
 
@@ -75,7 +79,6 @@ def update_total_macros_of_meal_ingredient_was_used_for(conn, meal_ids, ingredie
         if isinstance(meal_ids, str):
             meal = select_meal_by_id(conn, meal_ids)
             calcMacrosAndUpdateMeal(meal, ingredient_info, meal_ids, conn)
-
         else: 
             for id in meal_ids:
                 meal = select_meal_by_id(conn, id)
@@ -85,15 +88,20 @@ def update_total_macros_of_meal_ingredient_was_used_for(conn, meal_ids, ingredie
         print("Error: {}".format(err))
 
 def calcMacrosAndUpdateMeal(meal, ingredient_info, meal_id, conn):
+
+    print(meal, ingredient_info)
+
     meal[3] -= ingredient_info[4] 
     meal[4] -= ingredient_info[5] 
     meal[5] -= ingredient_info[6] 
     meal[6] -= ingredient_info[7] 
     meal[7] -= ingredient_info[8] 
 
+    print(meal, ingredient_info)
+
     update_personal_meal_total_macros(
-                conn, meal_id, meal[3], meal[4], 
-                meal[5], meal[6], meal[7])
+                conn, meal_id, int(meal[3]), int(meal[4]), 
+                int(meal[5]), int(meal[6]), int(meal[7]))
 
 def update_ingredient(conn, ingredient_id, ingredient_name, amount, protein, calories, carbohydrates, fat, sugar):
     cur = conn.cursor()
@@ -110,6 +118,7 @@ def update_ingredient(conn, ingredient_id, ingredient_name, amount, protein, cal
                     WHERE personal_ingredient_no = ? 
                     """, (ingredient_name, amount, round(protein, 2), round(calories, 2), round(carbohydrates, 2), round(fat, 2), round(sugar, 2), ingredient_id,))
         conn.commit()
+        cur.close()
     except sqlite3.Error as err:
         print("Error: {}".format(err))
 
@@ -145,6 +154,7 @@ def update_password_by_user_id(conn, password, user_id):
     try:
         cur.execute("UPDATE users SET password =? WHERE user_no =?", (password, user_id,))
         conn.commit()
+        cur.close()
     except sqlite3.Error as err:
         print("Error: {}".format(err))
     
@@ -153,6 +163,7 @@ def update_user_profile_picture(conn, filename, user_id):
     try:
         cur.execute("UPDATE users SET profile_picture_name = ? WHERE user_no = ?", (filename, user_id,))
         conn.commit()
+        cur.close()
     except sqlite3.Error as err:
         print("Error: {}".format(err))
 
@@ -161,6 +172,7 @@ def update_user_token(conn, token, username):
     try:
         cur.execute("UPDATE users SET token = ? WHERE username = ?", (token, username,))
         conn.commit()
+        cur.close()
 
         return True
     except sqlite3.Error as err:

@@ -27,11 +27,14 @@ from inputValidation import isUsernameValid, isPasswordValid, validateUserInfo, 
 
 from encryption import get_hashed_password, check_password
 
+from flask_cors import CORS
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app)
 
 app.secret_key = os.environ.get('API_KEY')
 app.config['picture_folder'] = "./user-images"
@@ -41,6 +44,7 @@ def get_db():
         g.db = create_connection(r"./database.db")  
     return g.db
 	
+
 def token_required(f):
 	@wraps(f)
 	def decorator(*args, **kwargs):

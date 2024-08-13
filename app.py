@@ -16,9 +16,9 @@ from insert_queries import add_user, add_meal_to_calender, add_ingredient, add_i
 
 from delete_queries import delete_meal, delete_meal_from_calender, delete_ingredient, delete_ingredient_from_specific_meal_with_ingredient_and_meal_id, delete_ingredient_from_meals_with_ingredient_id, delete_ingredients_from_meal_with_meal_id
 
-from select_queries import (select_all_users_username, select_all_users_username_except_one, select_all_users_emails_except_one,
-select_meal_calender, select_personal_meals_with_ingredients, select_user_by_token, select_user_id_and_password, select_user_no_by_username, select_meals_the_ingredient_were_in, select_user_profile_picture_name, select_users_image_name_by_id, select_users_meals, select_users_ingredients, select_users_calender_entries,
-select_info_for_user_by_id, select_average_macros, select_personal_ingredients, select_ingredient_by_id, select_password_by_id, select_all_users_emails)
+from select_queries import (select_all_users_username, select_all_users_username_except_one, select_all_users_emails_except_one, select_calender_data,
+select_personal_meals_with_ingredients, select_user_by_token, select_user_id_and_password, select_user_no_by_username, select_meals_the_ingredient_were_in, select_user_profile_picture_name, select_users_image_name_by_id, select_users_meals, select_users_ingredients, select_users_calender_entries,
+select_info_for_user_by_id, select_personal_ingredients, select_ingredient_by_id, select_password_by_id, select_all_users_emails)
 
 from update_queries import (update_user_info, update_personal_meal, update_password_by_user_id,
 							update_ingredient, update_personal_meal_name, update_total_macros_of_meal_ingredient_was_used_for, UPDATE_reCalcMacrosForMeals, update_user_profile_picture, update_user_token)
@@ -27,14 +27,11 @@ from inputValidation import isUsernameValid, isPasswordValid, validateUserInfo, 
 
 from encryption import get_hashed_password, check_password
 
-from flask_cors import CORS
-
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
 
 app.secret_key = os.environ.get('API_KEY')
 app.config['picture_folder'] = "./user-images"
@@ -44,7 +41,6 @@ def get_db():
         g.db = create_connection(r"./database.db")  
     return g.db
 	
-
 def token_required(f):
 	@wraps(f)
 	def decorator(*args, **kwargs):
@@ -82,7 +78,6 @@ def api_key_required(f):
 		if not api_key:
 			return jsonify({'message': 'API key is missing!'}), 400
 
-		print(api_key, app.secret_key)
 		if api_key == app.secret_key:
 			
 			return f(*args, **kwargs)
@@ -486,8 +481,6 @@ def editMeal(meal_id):
 
 			data = request.get_json()
 
-			print(data)
-
 			if(len(data) == 1):
 				update_personal_meal_name(get_db(), meal_id, data['meal_name'])
 				return jsonify({'message': 'Ingredient edited successfully'}), 200
@@ -652,8 +645,6 @@ def user_info(user_id):
 			"Activity lvl": user_info[7],
 		}
 
-		print(response)
-
 		return response, 200
 	else:
 		return jsonify({'message': 'Unauthorized'}), 401
@@ -691,19 +682,11 @@ def personal_ingredients(user_id):
 	else:
 		return jsonify({'message': 'Unauthorized'}), 401
 	
-@app.route('/meal_calender/<user_id>/<date>', methods=["GET"])
-@token_required
-def meal_calender(user_id, date):
-	if int(user_id) == g.user.get('id'):
-		return select_meal_calender(get_db(), user_id, date), 200
-	else:
-		return jsonify({'message': 'Unauthorized'}), 401
-
-@app.route('/average_macros/<user_id>', methods=["GET"])
+@app.route('/calender_data/<user_id>', methods=["GET"])
 @token_required
 def average_macros(user_id):
 	if int(user_id) == g.user.get('id'):
-		return select_average_macros(get_db(), user_id), 200
+		return select_calender_data(get_db(), user_id), 200
 	else:
 		return jsonify({'message': 'Unauthorized'}), 401
 		

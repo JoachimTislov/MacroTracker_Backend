@@ -196,39 +196,7 @@ def select_personal_ingredients(conn, user_no):
     except sqlite3.Error as err:
         print("Error, selecting personal_ingredients: {}".format(err))
 
-def select_meal_calender(conn, user_no, date):
-    cur = conn.cursor()
-    
-    try:
-        cur.execute("SELECT personal_meal_no, meal_name FROM personal_meals pm WHERE pm.user_no =?", (user_no,))
-        meal_data = [list(row) for row in cur.fetchall()] #Converting tuples to lists
-        
-        calender = []
-        for entry in meal_data:
-            cur.execute("SELECT * FROM meal_calender WHERE personal_meal_no = ? AND date = ?", (entry[0], date,)) 
-            calender += [
-                {
-                    'calender_id': row[0],
-                    'meal_name': row[1],
-                    'date': row[2],
-                    'time_of_day': row[3]
-                } 
-                for row in cur.fetchall()
-            ]
-
-        cur.close()
-        for entry in calender:
-            for row in meal_data:
-                if(entry['meal_name'] == row[0]):
-                    entry['meal_name'] = row[1]
-                    
-
-        return calender
-    except sqlite3.Error as err:
-        print("Error, selecting meal calender: {}".format(err))
-  
-        
-def select_average_macros(conn, user_no):
+def select_calender_data(conn, user_no):
     cur = conn.cursor()
     try:
         cur.execute("SELECT * FROM personal_meals pm WHERE pm.user_no =?", (user_no,))
@@ -249,12 +217,14 @@ def select_average_macros(conn, user_no):
 
         cur.close()
 
+        hashMap = {}
+
         for entry in calender:
             for row in meal_data:
                 if(entry['meal'] == row[0]):
                     entry['meal'] =  {
                         'meal_id': row[0],
-                        'Name': row[1],
+                        'name': row[1],
                         'user_id': row[2],
                         'protein': row[3],
                         'calories': row[4],
@@ -262,8 +232,14 @@ def select_average_macros(conn, user_no):
                         'fat': row[6],
                         'sugar': row[7]
                     }
+
+            date = entry['date']
+            if not date in hashMap:
+                hashMap[date] = []
+
+            hashMap[date].append(entry)
         
-        return calender
+        return hashMap
     
     except sqlite3.Error as err:
         print("Error, selecting average macros: {}".format(err))

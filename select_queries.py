@@ -176,17 +176,19 @@ def select_personal_meals_with_ingredients(conn, user_no):
             )
 
             for ingredient in personal_meals_with_ingredients:
+                 
                 if ingredient[0] == entry[0]:
+                    print(ingredient)
                     meals_with_ingredients[i]["ingredients"].append(
                         {
-                            "ingredient_id": ingredient[1],
-                            "name": ingredient[2],
-                            "amount": ingredient[3],
-                            "protein": ingredient[4],
-                            "calories": ingredient[5],
-                            "carbohydrates": ingredient[6],
-                            "fat": ingredient[7],
-                            "sugar": ingredient[8],
+                            "ingredient_id": ingredient[0],
+                            "name": ingredient[1],
+                            "amount": ingredient[2],
+                            "protein": ingredient[3],
+                            "calories": ingredient[4],
+                            "carbohydrates": ingredient[5],
+                            "fat": ingredient[6],
+                            "sugar": ingredient[7],
                         }
                     )
 
@@ -265,7 +267,7 @@ def select_calender_data(conn, user_no):
                     }
 
             date = entry["date"]
-            if not date in hashMap:
+            if date not in hashMap:
                 hashMap[date] = []
 
             hashMap[date].append(entry)

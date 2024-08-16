@@ -402,7 +402,7 @@ def addNewIngredientsAndUpdateOldOnes(ingredients_for_meal, meal_id):
 	user_id = g.user.get('id')
 
 	for ingredient in ingredients_for_meal:
-		if(ingredient['ingredient_id'] == 0):
+		if(ingredient['ingredient_id'] == ''):
 			ingredient_id = add_ingredient(get_db(),
 					user_id,
 					ingredient['name'], 

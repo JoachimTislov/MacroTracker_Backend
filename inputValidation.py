@@ -71,7 +71,7 @@ def validateIngredients_for_meal(ingredients_for_meal):
                     ingredient['sugar'])
 
         if validate_ingredient is not True:
-            return  validate_ingredient, 500
+            return validate_ingredient, 500
     
     return True
 
@@ -90,7 +90,7 @@ def isPasswordValid(string):
     if len(string) < 9 or len(string) > 50:
         return 'Password length is invalid'
     
-    if not re.match(r'^(?=.*[!@#$%^&*(),.?":{}|<>]).*$', string):
+    if not re.match(r'^(?=.*[}{.@$£<>-_/)[(+¤%&;:*¨~`', string):
        return 'Password does not have a special character'
     
     return True

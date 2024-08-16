@@ -141,7 +141,7 @@ def register():
 
 	for nickname in usernames:
 		if username == nickname[0]:
-			return jsonify({'message': 'Username is already taken'}), 500
+			return jsonify({'message': 'Username is already taken'}), 400
 
 	password = request.json['password']
 	confirm_password = request.json['confirm_password']
@@ -155,17 +155,17 @@ def register():
 
 	for user_email in select_all_users_emails(get_db()):
 		if email == user_email:
-			return jsonify({'message': 'Email is already taken'}), 500
+			return jsonify({'message': 'Email is already taken'}), 400
 
 	register_validation = validateUserInfo(username, gender, activity_lvl, email, name, weight, height, age)
 
 	if isinstance(register_validation, str):
-		jsonify({'message': register_validation}), 400
+		return jsonify({'message': register_validation}), 400
 
 	for value in [password, confirm_password]:
 		passwordValid = isPasswordValid(value)
 		if isinstance(passwordValid, str):
-			jsonify({'message': passwordValid}), 400
+			return jsonify({'message': passwordValid}), 400
 
 	if password != confirm_password:
 		return jsonify({'message': 'Passwords do not match'}), 400
@@ -720,6 +720,6 @@ def average_macros(user_id):
 		return jsonify({'message': 'Unauthorized'}), 401
 		
 if __name__ == '__main__':
-	app.run()
+	app.run(debug=True)
 
 

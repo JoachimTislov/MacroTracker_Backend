@@ -16,7 +16,7 @@ from insert_queries import add_user, add_meal_to_calender, add_ingredient, add_i
 
 from delete_queries import delete_meal, delete_meal_from_calender, delete_ingredient, delete_ingredient_from_specific_meal_with_ingredient_and_meal_id, delete_ingredient_from_meals_with_ingredient_id, delete_ingredients_from_meal_with_meal_id
 
-from select_queries import (select_all_users_username, select_all_users_username_except_one, select_all_users_emails_except_one, select_calender_data,
+from select_queries import (select_all_users_username, select_all_users_username_except_one, select_all_users_emails_except_one, select_calender_data, select_ingredient_and_meal_entry_in_meal_ingredients,
 select_personal_meals_with_ingredients, select_user_by_token, select_user_id_and_password, select_user_no_by_username, select_meals_the_ingredient_were_in, select_user_profile_picture_name, select_users_image_name_by_id, select_users_meals, select_users_ingredients, select_users_calender_entries,
 select_info_for_user_by_id, select_personal_ingredients, select_ingredient_by_id, select_password_by_id, select_all_users_emails)
 
@@ -86,7 +86,7 @@ def api_key_required(f):
 			
 			return f(*args, **kwargs)
 		else:
-			return jsonify({'message': 'Unauthorized access!'}), 401
+			return jsonify({'message': 'Unauthorized'}), 401
 
 	return decorator
 	
@@ -196,7 +196,7 @@ def change_password(user_id):
 		if isinstance(result, str):
 			return jsonify({'message': result}), 400
 
-	old_password_in_database = select_password_by_id(get_db(), 1)
+	old_password_in_database = select_password_by_id(get_db(), user_id)
 	if not check_password(old_password, old_password_in_database):
 		return jsonify({'message': 'Old password is incorrect'}), 400
 	
@@ -206,7 +206,8 @@ def change_password(user_id):
 	if new_password == old_password:
 		return jsonify({'message': 'The new password cant be the same as your old password'}), 400
 
-	update_password_by_user_id(get_db(), get_hashed_password(new_password), 1)
+	update_password_by_user_id(get_db(), get_hashed_password(new_password), user_id)
+
 	return jsonify({'message': 'Successfully changed your password'}), 200
 
 @app.route('/user_info', methods=["PUT"])
@@ -263,7 +264,7 @@ def upload_profile_picture():
 		file = request.files['file']
 
 		if not validatePicture(file.filename):
-			return jsonify({'message': 'File format is not accepted'}), 406
+			return jsonify({'message': 'File format is not accepted, only; .png, .jpg, .jpeg, .gif' }), 406
 
 		if file:
 			user_id = g.user.get('id')
@@ -275,16 +276,19 @@ def upload_profile_picture():
 			file_path = os.path.join(app.config['picture_folder'], filename)
 
 			file.save(file_path)
-			update_user_profile_picture(get_db(), filename, user_id)
+			result = update_user_profile_picture(get_db(), filename, user_id)
 
-			return jsonify({'message': 'Profile picture uploaded successfully'}), 200
+			if result: 
+				return jsonify({'message': 'Profile picture uploaded successfully'}), 200
+			else: 
+				return jsonify({'message': 'Error when uploading picture'}), 500
 		
 		else:
 			return jsonify({'message': 'Did not receive any file'}), 400
 		
 	except Exception as e:
             print('Error uploading profile picture:', e)
-            return jsonify({'message': 'Error uploading profile picture'}), 50
+            return jsonify({'message': 'Error uploading profile picture'}), 500
 			
 			
 @app.route('/profile_picture', methods=['DELETE'])
@@ -300,9 +304,12 @@ def delete_profile_picture():
 		if file_path and os.path.exists(file_path):
 			os.remove(file_path)
 
-		update_user_profile_picture(db, None, user_id)
+		result = update_user_profile_picture(db, None, user_id)
 
-		return jsonify({'message': 'Profile picture successfully deleted'}), 200
+		if result:
+			return jsonify({'message': 'Profile picture successfully deleted'}), 200
+		else: 
+			return jsonify({'message': 'Error when deleting picture'}), 500
 
 	except Exception as e:
 		print('Error deleting profile picture:', e)
@@ -322,7 +329,7 @@ def deleteMeal(meal_id):
 
 				return jsonify({'message': 'Deleted meal successfully'}), 200
 			else:
-				return jsonify({'message': 'User cant delete others meals'}), 401
+				return jsonify({'message': 'Unauthorized'}), 401
 
 		except sqlite3.Error as err:
         		print("Error: {}".format(err))
@@ -346,7 +353,7 @@ def delete_ingredient_from_meal(ingredient_id, meal_id):
 
 				return jsonify({'message': f'Deleted {ingredient_info[2]} from the meal, successfully'}), 200
 			else:
-				return jsonify({'message': 'User cant delete others ingredient from others meals'}), 401
+				return jsonify({'message': 'Unauthorized'}), 401
 		
 		except sqlite3.Error as err:
 			print("Error: {}".format(err))
@@ -370,7 +377,7 @@ def delete_meal_fromCalender(calender_id):
 				return jsonify({'message': 'Deleted calender entry successfully'}), 200
 		
 			else:
-				return jsonify({'message': 'User cant delete others calender entries'}), 401
+				return jsonify({'message': 'Unauthorized'}), 401
 			
 		except sqlite3.Error as err:
 			print("Error: {}".format(err))
@@ -395,7 +402,7 @@ def addNewIngredientsAndUpdateOldOnes(ingredients_for_meal, meal_id):
 	user_id = g.user.get('id')
 
 	for ingredient in ingredients_for_meal:
-		if(ingredient['ingredient_id'] == ''):
+		if(ingredient['ingredient_id'] == 0):
 			ingredient_id = add_ingredient(get_db(),
 					user_id,
 					ingredient['name'], 
@@ -406,7 +413,7 @@ def addNewIngredientsAndUpdateOldOnes(ingredients_for_meal, meal_id):
 					ingredient['fat'],
 					ingredient['sugar'])
 			add_ingredient_to_meal(get_db(), meal_id, ingredient_id)
-		else:	
+		else:
 			update_ingredient(get_db(), 
 					ingredient['ingredient_id'], 
 					ingredient['name'], 
@@ -416,7 +423,10 @@ def addNewIngredientsAndUpdateOldOnes(ingredients_for_meal, meal_id):
 					ingredient['carbohydrates'],
 					ingredient['fat'],
 					ingredient['sugar'])
-			add_ingredient_to_meal(get_db(), meal_id, ingredient['ingredient_id'])
+			ingredientAddedToMeal = select_ingredient_and_meal_entry_in_meal_ingredients(get_db(), meal_id, ingredient['ingredient_id'])
+
+			if not ingredientAddedToMeal:
+				add_ingredient_to_meal(get_db(), meal_id, ingredient['ingredient_id'])
 
 def updatePersonalMeal(ingredients_for_meal, meal_name, isMealInDatabase, meal_id):
 	user_id = g.user.get('id')
@@ -470,7 +480,7 @@ def addMeal():
 			
 			addNewIngredientsAndUpdateOldOnes(ingredients_for_meal, meal_id)
 
-			return jsonify({'message': f'Meal {meal_name} added successfully'}), 200
+			return jsonify({'message': f'Created {meal_name} successfully'}), 200
 		except sqlite3.Error as err:
         		print("Error: {}".format(err))
 
@@ -481,18 +491,19 @@ def editMeal(meal_id):
 			user_id = g.user.get('id')
 			meal_ids = select_users_meals(get_db(), user_id)
 			if not validateOwnership(meal_id, meal_ids):
-				return jsonify({ 'message': 'User cant edit others meals' }), 401
+				return jsonify({ 'message': 'Unauthorized' }), 401
 
 			data = request.get_json()
+			meal_name = data['meal_name']
 
 			if(len(data) == 1):
-				update_personal_meal_name(get_db(), meal_id, data['meal_name'])
-				return jsonify({'message': 'Ingredient edited successfully'}), 200
+				update_personal_meal_name(get_db(), meal_id, meal_name)
+
+				return jsonify({'message': f'Modified {meal_name} successfully'}), 200
 			
-			meal_name = data['meal_name']
 			result = isMealNameValid(meal_name)
 			if not result:
-				return jsonify({ 'message': isMealNameValid(meal_name) }), 406
+				return jsonify({ 'message': result }), 406
 
 			data.pop('meal_name')
 
@@ -500,12 +511,12 @@ def editMeal(meal_id):
 			
 			result = validateIngredients_for_meal(ingredients_for_meal)
 			if result is not True:
-				return result, 200
+				return jsonify({ 'message': result }), 406
 
 			updatePersonalMeal(ingredients_for_meal, meal_name, True, meal_id)
 			addNewIngredientsAndUpdateOldOnes(ingredients_for_meal, meal_id)
 
-			return jsonify({'message': f'Meal {meal_name} edited successfully'}), 200
+			return jsonify({'message': f'Modified {meal_name} successfully'}), 200
 		except sqlite3.Error as err:
         		print("Error: {}".format(err))
 		
@@ -517,7 +528,7 @@ def add_meal_to_given_date():
 
 		result = isCalenderDateAndTimeValid(data['date'], data['time'])
 		if not result:
-			return jsonify({ 'message': result}), 406
+			return jsonify({ 'message': result }), 406
 
 		add_meal_to_calender(get_db(), data['id'], data['date'], data['time'])
 
@@ -543,7 +554,7 @@ def addIngredient():
 		validate_ingredient = isIngredientValid(name, amount, protein, calories, carbohydrates, fat, sugar)
 
 		if validate_ingredient is not True:
-			return validate_ingredient, 500
+			return validate_ingredient, 406
 		
 		user_id = g.user.get('id')
 		add_ingredient(
@@ -557,14 +568,14 @@ def addIngredient():
 			fat,
 			sugar)
 		
-		return jsonify({'message': f'Ingredient: {name} added successfully'}), 200
+		return jsonify({'message': f'Created {name} successfully'}), 200
 	
 @app.route('/ingredient/<ingredient_id>', methods=["PUT"])
 @token_required
 def editIngredient(ingredient_id):
 		ingredient_ids = select_users_ingredients(get_db(), g.user.get('id'))
 		if validateOwnership(ingredient_id, ingredient_ids) is not True:
-			return 'User cant edit others ingredients', 401
+			return jsonify({'message': 'Unauthorized'}), 401
 
 		new_data = request.json 
 
@@ -581,7 +592,7 @@ def editIngredient(ingredient_id):
 		validate_ingredient = isIngredientValid(name, amount, protein, calories, carbohydrates, fat, sugar)
 
 		if validate_ingredient is not True:
-			return validate_ingredient, 500
+			return jsonify({'message': validate_ingredient }), 406
 		
 		update_ingredient(get_db(),
 						ingredient_id,
@@ -624,9 +635,9 @@ def deleteIngredient(ingredient_id):
 
 				delete_ingredient(get_db(), ingredient_id)
 
-				return jsonify({'message': f'Deleted {ingredient_info[2]} ingredient successfully'}), 200
+				return jsonify({'message': f'Deleted {ingredient_info[2]} successfully'}), 200
 			else:
-				return jsonify({'message': 'User cant delete others ingredient'}), 401
+				return jsonify({'message': 'Unauthorized'}), 401
 			
 		except sqlite3.Error as err:
         		print("Error: {}".format(err))
@@ -637,6 +648,9 @@ def deleteIngredient(ingredient_id):
 def user_info(user_id):
 	if int(user_id) == g.user.get('id'):
 		user_info = select_info_for_user_by_id(get_db(), user_id)
+
+		if not user_info:
+			return jsonify({ 'message': 'Error when getting user information'}), 500
 
 		response = {
 			"Name": user_info[0],
@@ -660,8 +674,7 @@ def user_picture(user_id):
 		image_name = select_users_image_name_by_id(get_db(), user_id)
 		if not image_name:
 			return jsonify({'message': 'Feel free to upload a profile picture'}), 200
-			#return jsonify({'message': 'Your profile picture is not in our system'}), 404
-
+	
 		path = os.path.join(app.config['picture_folder'], image_name)		
 		if not os.path.exists(path):
 			return jsonify({'message': 'We could not find your Profile picture, sorry'}), 404
@@ -674,7 +687,11 @@ def user_picture(user_id):
 @token_required
 def personal_meals(user_id):
 	if int(user_id) == g.user.get('id'):
-		return select_personal_meals_with_ingredients(get_db(), user_id), 200
+		result = select_personal_meals_with_ingredients(get_db(), user_id)
+		if isinstance(result, list):
+			return result, 200
+		else:
+			return jsonify({ 'message': 'Error when getting meals'}), 500
 	else:
 		return jsonify({'message': 'Unauthorized'}), 401
 
@@ -682,7 +699,11 @@ def personal_meals(user_id):
 @token_required
 def personal_ingredients(user_id):
 	if int(user_id) == g.user.get('id'):
-		return select_personal_ingredients(get_db(), user_id), 200
+		result = select_personal_ingredients(get_db(), user_id)
+		if isinstance(result, list):
+			return result, 200
+		else:
+			return jsonify({ 'message': 'Error when getting ingredients'}), 500
 	else:
 		return jsonify({'message': 'Unauthorized'}), 401
 	
@@ -690,7 +711,11 @@ def personal_ingredients(user_id):
 @token_required
 def average_macros(user_id):
 	if int(user_id) == g.user.get('id'):
-		return select_calender_data(get_db(), user_id), 200
+		result = select_calender_data(get_db(), user_id)
+		if isinstance(result, dict):
+			return result, 200
+		else:
+			return jsonify({ 'message': 'Error when getting calender data'}), 500
 	else:
 		return jsonify({'message': 'Unauthorized'}), 401
 		

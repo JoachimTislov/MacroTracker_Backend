@@ -89,15 +89,11 @@ def update_total_macros_of_meal_ingredient_was_used_for(conn, meal_ids, ingredie
 
 def calcMacrosAndUpdateMeal(meal, ingredient_info, meal_id, conn):
 
-    print(meal, ingredient_info)
-
     meal[3] -= ingredient_info[4] 
     meal[4] -= ingredient_info[5] 
     meal[5] -= ingredient_info[6] 
     meal[6] -= ingredient_info[7] 
     meal[7] -= ingredient_info[8] 
-
-    print(meal, ingredient_info)
 
     update_personal_meal_total_macros(
                 conn, meal_id, int(meal[3]), int(meal[4]), 
@@ -164,6 +160,8 @@ def update_user_profile_picture(conn, filename, user_id):
         cur.execute("UPDATE users SET profile_picture_name = ? WHERE user_no = ?", (filename, user_id,))
         conn.commit()
         cur.close()
+
+        return True
     except sqlite3.Error as err:
         print("Error: {}".format(err))
 

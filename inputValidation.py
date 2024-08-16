@@ -90,7 +90,7 @@ def isPasswordValid(string):
     if len(string) < 9 or len(string) > 50:
         return 'Password length is invalid'
     
-    if not re.match(r'^(?=.*[}{.@$£<>-_/)[(+¤%&;:*¨~`', string):
+    if not re.match(r'^(?=.*[}{.@$£<>\-_/)\[(+¤%&;:*¨~`])', string):
        return 'Password does not have a special character'
     
     return True

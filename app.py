@@ -182,7 +182,7 @@ def register():
 @token_required
 def change_password(user_id):
 
-	if user_id != g.user.get('id'):
+	if int(user_id) != g.user.get('id'):
 		return jsonify({ 'message': 'Unauthorized'}), 401
 	
 	old_password = request.json['old_password']

@@ -103,7 +103,7 @@ def token_required(f):
     def decorator(*args, **kwargs):
         auth = request.headers.get("Authorization")
 
-        if int(auth) == 1:  # Bypassing token auth for example account
+        if auth == "1":  # Bypassing token auth for example account
             user = select_user_by_id(get_db(), auth)
         else:
             if not auth:
@@ -295,10 +295,11 @@ def update_user_information():
     try:
         user_id = g.user.get("id")
 
-        username = request.json["username"]
+        username = "Peddi"
+
         # Prevent people from changing the username of the example account
-        if user_id == 1:
-            username = "Peddi"
+        if user_id != 1:
+            username = request.json["username"]
 
         name = request.json["name"]
         age = int(request.json["age"])

@@ -256,14 +256,9 @@ def register():
 @app.route("/password/<user_id>", methods=["PUT"])
 @token_required
 def change_password(user_id):
-    user_id = g.user.get("id")
-
-    if int(user_id) == 1:
-        return jsonify(
-            {"message": "Cant change the password of the example account"}
-        ), 406
-
-    if int(user_id) != user_id:  # Cant change the password of the example account
+    if int(user_id) != g.user.get(
+        "id"
+    ):  # Cant change the password of the example account
         return jsonify({"message": "Unauthorized"}), 401
 
     old_password = request.json["old_password"]

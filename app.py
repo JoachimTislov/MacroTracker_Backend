@@ -293,8 +293,14 @@ def change_password(user_id):
 @token_required
 def update_user_information():
     try:
+        user_id = g.user.get("id")
+
+        # Prevent people from changing the username of the example account
+        username = None
+        if user_id != 1:
+            username = request.json["username"]
+
         name = request.json["name"]
-        username = request.json["username"]
         age = int(request.json["age"])
         height = float(request.json["height"])
         weight = float(request.json["weight"])

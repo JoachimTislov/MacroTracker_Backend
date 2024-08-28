@@ -295,10 +295,10 @@ def update_user_information():
     try:
         user_id = g.user.get("id")
 
+        username = request.json["username"]
         # Prevent people from changing the username of the example account
-        username = None
-        if user_id != 1:
-            username = request.json["username"]
+        if user_id == 1:
+            username = "Peddi"
 
         name = request.json["name"]
         age = int(request.json["age"])

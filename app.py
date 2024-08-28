@@ -50,6 +50,7 @@ from select_queries import (
     select_ingredient_by_id,
     select_password_by_id,
     select_all_users_emails,
+    select_user_by_id,
 )
 
 from update_queries import (
@@ -100,20 +101,18 @@ def get_db():
 def token_required(f):
     @wraps(f)
     def decorator(*args, **kwargs):
-        token = None
-        if "Authorization" in request.headers:
-            token = request.headers.get("Authorization")
+        auth = request.headers.get("Authorization")
 
-        if not token:
-            token = request.json.get("Authorization")
+        if int(auth) == 1:  # Bypassing token auth for example account
+            user = select_user_by_id(get_db(), auth)
+        else:
+            if not auth:
+                return jsonify({"message": "Token is missing!"}), 401
 
-        if not token:
-            return jsonify({"message": "Token is missing!"}), 401
+            user = select_user_by_token(get_db(), auth)
 
-        user = select_user_by_token(get_db(), token)
-
-        if user is None:
-            return jsonify({"message": "Invalid token!"}), 401
+            if user is None:
+                return jsonify({"message": "Invalid token!"}), 401
 
         g.user = {"id": user[0], "username": user[1]}
 
@@ -165,15 +164,15 @@ def loginPage():
     users_password = user[1]
     if check_password(password, users_password):
         token = str(uuid4())
+        # The example account wont be affected by multiple people logging into the account
         result = update_user_token(get_db(), token, username)
 
         if result:
-            user_id = user[0]
             return jsonify(
                 {
                     "message": "Logged in successfully",
                     "token": token,
-                    "user_id": user_id,
+                    "user_id": user[0],
                     "username": username,
                 }
             ), 200
@@ -257,7 +256,14 @@ def register():
 @app.route("/password/<user_id>", methods=["PUT"])
 @token_required
 def change_password(user_id):
-    if int(user_id) != g.user.get("id"):
+    user_id = g.user.get("id")
+
+    if int(user_id) == 1:
+        return jsonify(
+            {"message": "Cant change the password of the example account"}
+        ), 406
+
+    if int(user_id) != user_id:  # Cant change the password of the example account
         return jsonify({"message": "Unauthorized"}), 401
 
     old_password = request.json["old_password"]

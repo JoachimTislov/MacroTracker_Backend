@@ -28,6 +28,11 @@ def select_user_by_token(conn, token):
     return run_select_query(conn, sql, token)
 
 
+def select_user_by_id(conn, user_id):
+    sql = "SELECT user_no, username FROM users WHERE user_no=?"
+    return run_select_query(conn, sql, user_id)
+
+
 def select_info_for_user_by_id(conn, user_id):
     sql = "SELECT name, username, email, age, weight, height, gender, activity_lvl FROM users WHERE user_no=?"
     return run_select_query(conn, sql, user_id)
@@ -141,14 +146,17 @@ def select_personal_meals_with_ingredients(conn, user_no):
     cur = conn.cursor()
     try:
         personal_meals_with_ingredients = []
-        cur.execute("""SELECT mi.personal_meal_no, pi.personal_ingredient_no, pi.ingredient_name, 
+        cur.execute(
+            """SELECT mi.personal_meal_no, pi.personal_ingredient_no, pi.ingredient_name, 
                     pi.amount, pi.protein, pi.calories, pi.carbohydrates, pi.fat, pi.sugar
                     FROM meal_ingredients mi 
                     LEFT JOIN personal_ingredients pi ON mi.personal_ingredient_no == pi.personal_ingredient_no
                     WHERE mi.personal_meal_no IN 
                     (SELECT pm.personal_meal_no 
                     FROM personal_meals pm 
-                    WHERE pm.user_no =?) """, (user_no,))
+                    WHERE pm.user_no =?) """,
+            (user_no,),
+        )
         personal_meals_with_ingredients += [list(row) for row in cur.fetchall()]
 
         personal_meals = []
@@ -157,35 +165,39 @@ def select_personal_meals_with_ingredients(conn, user_no):
 
         meals_with_ingredients = []
         for i, entry in enumerate(personal_meals):
-            meals_with_ingredients.append({
-                "meal_id": entry[0], 
-                "name": entry[1], 
-                "user_id": entry[2], 
-                "protein": entry[3], 
-                "calories": entry[4],
-                "carbohydrates": entry[5],
-                "fat": entry[6],
-                "sugar": entry[7],
-                "ingredients": []
-            })
-            
+            meals_with_ingredients.append(
+                {
+                    "meal_id": entry[0],
+                    "name": entry[1],
+                    "user_id": entry[2],
+                    "protein": entry[3],
+                    "calories": entry[4],
+                    "carbohydrates": entry[5],
+                    "fat": entry[6],
+                    "sugar": entry[7],
+                    "ingredients": [],
+                }
+            )
+
             for ingredient in personal_meals_with_ingredients:
-                if(ingredient[0] == entry[0]):
-                    meals_with_ingredients[i]['ingredients'].append(
-                    {"ingredient_id": ingredient[1],
-                    "name": ingredient[2], 
-                    "amount": ingredient[3], 
-                    "protein": ingredient[4],
-                    "calories": ingredient[5],
-                    "carbohydrates": ingredient[6],
-                    "fat": ingredient[7],
-                    "sugar": ingredient[8]})
+                if ingredient[0] == entry[0]:
+                    meals_with_ingredients[i]["ingredients"].append(
+                        {
+                            "ingredient_id": ingredient[1],
+                            "name": ingredient[2],
+                            "amount": ingredient[3],
+                            "protein": ingredient[4],
+                            "calories": ingredient[5],
+                            "carbohydrates": ingredient[6],
+                            "fat": ingredient[7],
+                            "sugar": ingredient[8],
+                        }
+                    )
 
         return meals_with_ingredients
     except sqlite3.Error as err:
         print("Error, selecting personal_meals_with_ingredients: {},".format(err))
         return False
-
 
 
 def select_personal_ingredients(conn, user_no):
@@ -299,6 +311,7 @@ def select_users_meals(conn, user_id):
         return meal_ids
     except sqlite3.Error as err:
         print("Error, selecting users meals the ingredient were in: {}".format(err))
+
 
 def select_ingredient_and_meal_entry_in_meal_ingredients(conn, meal_id, ingredient_id):
     cur = conn.cursor()

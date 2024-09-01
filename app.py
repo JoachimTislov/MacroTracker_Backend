@@ -294,12 +294,15 @@ def change_password(user_id):
 def update_user_information():
     try:
         user_id = g.user.get("id")
-
-        username = "Peddi"
+        username = g.user.get("username")
 
         # Prevent people from changing the username of the example account
         if user_id != 1:
-            username = request.json["username"]
+            u = request.json.get("username")
+            if not u:
+                return jsonify({"message": "Could not find username"}), 400
+            else:
+                username = u
 
         name = request.json["name"]
         age = int(request.json["age"])
